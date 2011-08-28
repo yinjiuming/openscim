@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    openscim restful scim server
+    http://code.google.com/p/openscim/
+    Copyright (C) 2011 Matthew Crooke <matthewcrooke@gmail.com>
+    
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<project name="SCIM" default="dist" basedir=".">
+    <description>
+        Ant build file for OpenSCIM for Java SCIM Server
+    </description>
+    <property name="final.war.name" value="SCIM.war" />
+    <property file="build.properties" />
+
+    <property name="build" location="build" />
+    <property name="build.classes" location="${build}/classes" />
+    <property name="build.lib" location="${build}/lib" />
+    <property name="sdk.base" location="${basedir}/../../.." />
+    <property name="sdk.lib" location="${sdk.base}/lib" />
+    <property name="sdk.dist" location="${sdk.base}/dist" />
+    <property name="sdk.json" location="${sdk.base}/ext/wink-json-provider" />
+    <property name="sdk.spring" location="${sdk.base}/ext/wink-spring-support" />
+    <property name="sdk.jar" location="${sdk.dist}/${sdk.jar.name}" />
+    <property name="final.war" location="${basedir}/${final.war.name}" />
+    <property name="main" location="${basedir}/src/main" />
+    <property name="webapp" location="${main}/webapp" />
+    <property name="resources" location="${main}/resources" />
+
+    <target name="init">
+        <mkdir dir="${build.classes}" />
+        <mkdir dir="${build.lib}" />
+    </target>
+
+    <target name="compile" depends="init" description="compile the source ">
+        <path id="sdk.classpath">
+            <fileset dir="${sdk.lib}" includes="**/*.jar" />
+            <pathelement path="${sdk.jar}" />
+            <fileset dir="${sdk.json}" includes="**/*.jar" />
+            <fileset dir="${sdk.spring}" includes="**/*.jar" />
+        </path>
+        <copy todir="${build.lib}" flatten="true">
+            <fileset dir="${sdk.lib}" includes="**/*.jar" />
+            <fileset file="${sdk.jar}">
+            </fileset>
+            <fileset dir="${sdk.json}" includes="**/*.jar" />
+            <fileset dir="${sdk.spring}" includes="**/*.jar" />
+        </copy>
+        <javac srcdir="${main}/java" destdir="${build.classes}">
+            <classpath refid="sdk.classpath" />
+        </javac>
+    </target>
+
+    <target name="dist" depends="compile" description="generate the distribution">
+        <war destfile="${final.war}" webxml="${webapp}/WEB-INF/web.xml">
+            <fileset dir="${webapp}/WEB-INF">
+                <exclude name="WEB-INF" />
+            </fileset>
+            <webinf dir="${webapp}/WEB-INF" includes="**/*" />
+            <classes dir="${build.classes}" includes="**/*" />
+            <lib dir="${build.lib}" includes="*.jar" />
+        </war>
+    </target>
+
+    <target name="clean" description="clean up">
+        <delete dir="${build}" />
+        <delete file="${final.war}" />
+    </target>
+
+</project>

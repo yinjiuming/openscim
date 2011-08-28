@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    openscim restful scim server
+    http://code.google.com/p/openscim/
+    Copyright (C) 2011 Matthew Crooke <matthewcrooke@gmail.com>
+    
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd" updateCheck="false">
+
+    <diskStore path="java.io.tmpdir/EhCacheSpringFilters" />
+    <defaultCache eternal="false" maxElementsInMemory="1000" overflowToDisk="false" diskPersistent="false" timeToIdleSeconds="0" timeToLiveSeconds="600" memoryStoreEvictionPolicy="LRU"/>
+    
+    <!-- users cache -->
+    <cache name="usersCache" eternal="false" maxElementsInMemory="10000" overflowToDisk="false" diskPersistent="false" timeToIdleSeconds="3600" timeToLiveSeconds="3600" memoryStoreEvictionPolicy="LRU" />
+    
+    <!-- groups cache -->
+    <cache name="groupsCache" eternal="false" maxElementsInMemory="10000" overflowToDisk="false" diskPersistent="false" timeToIdleSeconds="3600" timeToLiveSeconds="3600" memoryStoreEvictionPolicy="LRU" />
+    
+    <!-- schemas cache -->
+    <cache name="usersSchemasCache" eternal="false" maxElementsInMemory="10000" overflowToDisk="false" diskPersistent="false" timeToIdleSeconds="3600" timeToLiveSeconds="3600" memoryStoreEvictionPolicy="LRU" />
+    <cache name="groupsSchemasCache" eternal="false" maxElementsInMemory="10000" overflowToDisk="false" diskPersistent="false" timeToIdleSeconds="3600" timeToLiveSeconds="3600" memoryStoreEvictionPolicy="LRU" />
+</ehcache>

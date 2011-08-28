@@ -1,0 +1,5 @@
+C:\SCIMService\SCIMCoreClassLibrary\bin\Debug\SCIMCoreClassLibrary.dll
+C:\SCIMService\SCIMCoreClassLibrary\bin\Debug\SCIMCoreClassLibrary.pdb
+C:\SCIMService\SCIMCoreClassLibrary\obj\Debug\ResolveAssemblyReference.cache
+C:\SCIMService\SCIMCoreClassLibrary\obj\Debug\SCIMCoreClassLibrary.dll
+C:\SCIMService\SCIMCoreClassLibrary\obj\Debug\SCIMCoreClassLibrary.pdb

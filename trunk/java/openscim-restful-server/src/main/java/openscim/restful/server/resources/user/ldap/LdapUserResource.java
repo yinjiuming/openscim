@@ -26,6 +26,8 @@ import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.BasicAttribute;
 import javax.naming.directory.BasicAttributes;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.ModificationItem;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
@@ -270,7 +272,47 @@ public class LdapUserResource extends UserResource
 	@Override
 	public Response changePassword(UriInfo uriInfo, String uid, User user)
 	{
-		// return an operation unsupported response
-		return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_IMPLEMENTED, HttpStatus.NOT_IMPLEMENTED.getMessage() + ": Service Provider does not support the change password operation");
+		// check the ldap template has been setup correctly
+		if(ldapTemplate != null)
+		{
+			try
+			{								
+				// retrieve the user
+				User lookedupUser = (User)ldapTemplate.lookup(uid, new UserAttributesMapper());				
+				
+				// check if the user was found
+				if(lookedupUser == null)
+				{
+					// user not found, return an error message
+			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
+				}
+				
+				// build a password modification			
+				Attribute passwordAttribute = new BasicAttribute("userPassword", user.getPassword());				
+				ModificationItem passwordItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, passwordAttribute);
+			    
+				// update the user password
+				ldapTemplate.modifyAttributes(user.getId(), new ModificationItem[]{passwordItem});
+			    
+				// password changed successfully
+			    return Response.status(HttpStatus.NO_CONTENT.getCode()).build();				
+			}
+			catch(Exception nException)
+			{
+				logger.debug("Resource " + uid + " not found");
+				logger.debug(nException);
+				
+				// user not found, return an error message
+		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
+			}
+		}
+		else
+		{
+			// ldap not configured
+			logger.error("ldap not configured");
+			
+			// return a server error
+			return ResourceUtilities.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.NOT_IMPLEMENTED.getMessage() + ": Service Provider user ldap repository not configured");
+		}
 	}
 }

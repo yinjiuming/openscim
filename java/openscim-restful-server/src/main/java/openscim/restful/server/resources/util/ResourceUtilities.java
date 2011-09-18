@@ -28,19 +28,19 @@ import org.apache.wink.common.http.HttpStatus;
 
 public class ResourceUtilities
 {
-	public static final ObjectFactory OBJECT_FACTORY = new ObjectFactory();
+	public static final ObjectFactory FACTORY = new ObjectFactory();
 	
 	public static Response buildErrorResponse(HttpStatus code, String message)
 	{
 		// create a response
-		openscim.entities.Response response = ResourceUtilities.OBJECT_FACTORY.createResponse();
+		openscim.entities.Response response = ResourceUtilities.FACTORY.createResponse();
 		
 		// create a response errors
-		Errors errors = ResourceUtilities.OBJECT_FACTORY.createResponseErrors();
+		Errors errors = ResourceUtilities.FACTORY.createResponseErrors();
 		response.setErrors(errors);
 
 		// create an unsupported operation error
-		openscim.entities.Error error = ResourceUtilities.OBJECT_FACTORY.createError();
+		openscim.entities.Error error = ResourceUtilities.FACTORY.createError();
 		error.setCode("" + code.getCode());
 		error.setDescription(message);
 		errors.getError().add(error);

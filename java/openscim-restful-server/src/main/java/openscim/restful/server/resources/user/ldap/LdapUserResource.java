@@ -23,6 +23,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Scanner;
 
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
@@ -37,6 +38,7 @@ import javax.ws.rs.core.UriInfo;
 
 import openscim.entities.PluralAttribute;
 import openscim.entities.User;
+import openscim.restful.server.resources.group.ldap.GroupAttributesMapper;
 import openscim.restful.server.resources.user.UserResource;
 import openscim.restful.server.resources.util.ResourceUtilities;
 
@@ -127,7 +129,6 @@ public class LdapUserResource extends UserResource
 		}		
 	}
 
-	
 	/*
 	 * @see 
 	 * openscim.restful.server.resources.user.UserResource#createUser(javax.ws.rs.core.UriInfo,openscim.entities.User)
@@ -140,6 +141,14 @@ public class LdapUserResource extends UserResource
 		{
 			try
 			{
+				// get the basedn
+				String basedn = UserAttributesMapper.DEFAULT_ACCOUNT_BASEDN;
+				if(properties.containsKey(UserAttributesMapper.ACCOUNT_BASEDN)) basedn = properties.getProperty(UserAttributesMapper.ACCOUNT_BASEDN);
+				
+				// get the uid attribute name
+				String uidAtttributeName = UserAttributesMapper.DEFAULT_UID_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.UID_ATTRIBUTE)) uidAtttributeName = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE);
+				
 				try
 				{
 					// create the mapper if it doesn't already exists
@@ -167,14 +176,12 @@ public class LdapUserResource extends UserResource
 				if(properties.containsKey(UserAttributesMapper.ACCOUNT_OBJECTCLASS_ATTRIBUTE)) objectclasses = properties.getProperty(UserAttributesMapper.ACCOUNT_OBJECTCLASS_ATTRIBUTE);
 				
 				// set the objectclass of the user
-				userAttributes.put("objectclass", "inetOrgPerson");
-				userAttributes.put("objectclass", "organizationalPerson");
-				userAttributes.put("objectclass", "person");
-				userAttributes.put("objectclass", "top");
-				
-				// get the uid attribute name
-				String uidAtttributeName = UserAttributesMapper.DEFAULT_UID_ATTRIBUTE;
-				if(properties.containsKey(UserAttributesMapper.UID_ATTRIBUTE)) uidAtttributeName = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE);
+				Scanner scanner = new Scanner(objectclasses);				
+				scanner.useDelimiter(",");
+				while(scanner.hasNext())
+				{
+					userAttributes.put("objectclass", scanner.next());
+				}								
 				
 				// set the uid
 				userAttributes.put(uidAtttributeName, user.getId());
@@ -238,10 +245,7 @@ public class LdapUserResource extends UserResource
 				if(properties.containsKey(UserAttributesMapper.PASSWORD_ATTRIBUTE)) passwordAtttributeName = properties.getProperty(UserAttributesMapper.PASSWORD_ATTRIBUTE);
 				
 				// set the password
-				if(user.getPassword() != null) userAttributes.put(passwordAtttributeName, user.getPassword());
-				
-				// set the set with description
-			    userAttributes.put("description", "Created via SCIM Restful Server for Java");
+				if(user.getPassword() != null) userAttributes.put(passwordAtttributeName, user.getPassword());				
 				
 			    // create the user
 			    ldapTemplate.bind(user.getId(), null, userAttributes);
@@ -278,7 +282,6 @@ public class LdapUserResource extends UserResource
 			return ResourceUtilities.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.NOT_IMPLEMENTED.getMessage() + ": Service Provider user ldap repository not configured");
 		}
 	}
-
 	
 	/*
 	 * @see 
@@ -307,18 +310,26 @@ public class LdapUserResource extends UserResource
 				
 				List<ModificationItem> items = new ArrayList<ModificationItem>();
 				
+				// get the uid attribute name
+				String uidAtttributeName = UserAttributesMapper.DEFAULT_UID_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.UID_ATTRIBUTE)) uidAtttributeName = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE);
+				
 				// build a uid modification
-			    if(user.getPassword() != null)
+			    if(user.getId() != null)
 			    {
-			    	Attribute uidAttribute = new BasicAttribute("uid", user.getId());				
+			    	Attribute uidAttribute = new BasicAttribute(uidAtttributeName, user.getId());				
 					ModificationItem uidItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, uidAttribute);
 					items.add(uidItem);
 			    }
 				
+			    // get the display name attribute name
+				String displayAtttributeName = UserAttributesMapper.DEFAULT_DISPLAYNAME_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.DISPLAYNAME_ATTRIBUTE)) displayAtttributeName = properties.getProperty(UserAttributesMapper.DISPLAYNAME_ATTRIBUTE);
+			    
 				// build a cn modification
-			    if(user.getPassword() != null)
+			    if(user.getDisplayName() != null)
 			    {
-			    	Attribute cnAttribute = new BasicAttribute("cn", user.getDisplayName());				
+			    	Attribute cnAttribute = new BasicAttribute(displayAtttributeName, user.getDisplayName());				
 					ModificationItem cnItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, cnAttribute);
 					items.add(cnItem);
 			    }
@@ -326,16 +337,24 @@ public class LdapUserResource extends UserResource
 				// build names modification
 				if(user.getName() != null)
 				{
+					// get the surname attribute name
+					String surnameAtttributeName = UserAttributesMapper.DEFAULT_FAMILYNAME_ATTRIBUTE;
+					if(properties.containsKey(UserAttributesMapper.FAMILYNAME_ATTRIBUTE)) surnameAtttributeName = properties.getProperty(UserAttributesMapper.FAMILYNAME_ATTRIBUTE);
+					
+					// get the given name attribute name
+					String givenAtttributeName = UserAttributesMapper.DEFAULT_GIVENNAME_ATTRIBUTE;
+					if(properties.containsKey(UserAttributesMapper.GIVENNAME_ATTRIBUTE)) givenAtttributeName = properties.getProperty(UserAttributesMapper.GIVENNAME_ATTRIBUTE);
+					
 					if(user.getName().getFamilyName() != null)
 				    {
-				    	Attribute snAttribute = new BasicAttribute("sn", user.getName().getFamilyName());				
+				    	Attribute snAttribute = new BasicAttribute(surnameAtttributeName, user.getName().getFamilyName());				
 						ModificationItem snItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, snAttribute);
 						items.add(snItem);
 				    }
 					
 					if(user.getName().getGivenName() != null)
 				    {
-				    	Attribute gnAttribute = new BasicAttribute("givenName", user.getName().getGivenName());				
+				    	Attribute gnAttribute = new BasicAttribute(givenAtttributeName, user.getName().getGivenName());				
 						ModificationItem gnItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, gnAttribute);
 						items.add(gnItem);
 				    }					
@@ -344,7 +363,11 @@ public class LdapUserResource extends UserResource
 				// set the emails
 				if(user.getEmails() != null)
 				{
-					Attribute emailAttribute = new BasicAttribute("mail");
+					// get the email attribute name
+					String mailAtttributeName = UserAttributesMapper.DEFAULT_MAIL_ATTRIBUTE;
+					if(properties.containsKey(UserAttributesMapper.MAIL_ATTRIBUTE)) mailAtttributeName = properties.getProperty(UserAttributesMapper.MAIL_ATTRIBUTE);
+					
+					Attribute emailAttribute = new BasicAttribute(mailAtttributeName);
 					List<PluralAttribute> emails = user.getEmails().getEmail();
 					for(PluralAttribute email : emails)
 					{						
@@ -357,7 +380,11 @@ public class LdapUserResource extends UserResource
 			    // set the telephones
 				if(user.getPhoneNumbers() != null)
 				{
-					Attribute telephoneAttribute = new BasicAttribute("telephoneNumber");
+					// get the telephone attribute name
+					String telephoneAtttributeName = UserAttributesMapper.DEFAULT_TELEPHONE_ATTRIBUTE;
+					if(properties.containsKey(UserAttributesMapper.TELEPHONE_ATTRIBUTE)) telephoneAtttributeName = properties.getProperty(UserAttributesMapper.TELEPHONE_ATTRIBUTE);
+					
+					Attribute telephoneAttribute = new BasicAttribute(telephoneAtttributeName);
 					List<PluralAttribute> telephones = user.getPhoneNumbers().getPhoneNumber();
 					for(PluralAttribute telephone : telephones)
 					{						
@@ -370,15 +397,14 @@ public class LdapUserResource extends UserResource
 				// build a password modification
 			    if(user.getPassword() != null)
 			    {
-			    	Attribute passwordAttribute = new BasicAttribute("userPassword", user.getPassword());				
+			    	// get the password attribute name
+					String passwordAtttributeName = UserAttributesMapper.DEFAULT_PASSWORD_ATTRIBUTE;
+					if(properties.containsKey(UserAttributesMapper.PASSWORD_ATTRIBUTE)) passwordAtttributeName = properties.getProperty(UserAttributesMapper.PASSWORD_ATTRIBUTE);
+			    	
+			    	Attribute passwordAttribute = new BasicAttribute(passwordAtttributeName, user.getPassword());				
 					ModificationItem passwordItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, passwordAttribute);
 					items.add(passwordItem);
 			    }
-				
-			    // build a description modification
-			    Attribute descriptionAttribute = new BasicAttribute("description", "Created via SCIM Restful Server for Java");				
-				ModificationItem descriptionItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, descriptionAttribute);
-			    items.add(descriptionItem);
 				
 				// update the user password
 				ModificationItem[] itemsArray = items.toArray(new ModificationItem[items.size()]);
@@ -406,7 +432,6 @@ public class LdapUserResource extends UserResource
 		}
 	}
 
-	
 	/*
 	 * @see 
 	 * openscim.restful.server.resources.user.UserResource#deleteUser(javax.ws.rs.core.UriInfo,java.lang.String)

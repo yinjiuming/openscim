@@ -38,15 +38,13 @@
 				<ref local="resource.scim.schema.ehcache" />
 				<ref local="resource.scim.schemas.ehcache" />
 				
-				<!-- ldap based scim implementation -->
-				<!--
-				<ref local="resource.scim.user.ldap" />
-				<ref local="resource.scim.users.ldap" />
-				<ref local="resource.scim.group.ldap" />
-				<ref local="resource.scim.groups.ldap" />
-				<ref local="resource.scim.schema.ldap" />
-				<ref local="resource.scim.schemas.ldap" />
-				-->
+				<!-- ldap based scim implementation -->				
+				<!--<ref local="resource.scim.user.ldap" />-->
+				<!--<ref local="resource.scim.users.ldap" />-->
+				<!--<ref local="resource.scim.group.ldap" />-->
+				<!--<ref local="resource.scim.groups.ldap" />-->
+				<!--<ref local="resource.scim.schema.ldap" />-->
+				<!--<ref local="resource.scim.schemas.ldap" />-->				
 			</set>
 		</property>
 	</bean>
@@ -71,35 +69,45 @@
 		<property name='cacheManager' ref='ehCacheManager'/>
 	</bean>		
 
-	<bean id="ldapContextSource" class="org.springframework.ldap.support.LdapContextSource">
+	<bean id="ldapContextSource" class="org.springframework.ldap.core.support.LdapContextSource">
         <property name="url" value="ldap://ldap.openscim:389" />
-        <property name="base" value="dc=openscim" />
-        <property name="userName" value="cn=Manager,dc=openscim" />
+        <!-- <property name="base" value="dc=openscim" />-->
+        <property name="userDn" value="cn=Manager,dc=openscim" />
         <property name="password" value="openscim" />
     </bean>
     
-    <bean id="ldapTemplate" class="org.springframework.ldap.LdapTemplate">
+    <bean id="ldapTemplate" class="org.springframework.ldap.core.LdapTemplate">
         <constructor-arg ref="ldapContextSource" />
     </bean>
 
 	<bean id="resource.scim.user.ldap" class="openscim.restful.server.resources.user.ldap.LdapUserResource" >
 		<property name='ldapTemplate' ref='ldapTemplate'/>
+		<property name='properties' ref='scim.customPropertiesFactory'/>
 	</bean>
-	<bean id="resource.scim.users.ldap" class="openscim.restful.server.resources.user.ldap.LdapUsersResource" >
-		<property name='ldapTemplate' ref='ldapTemplate'/>
-	</bean>
+	
 	<bean id="resource.scim.group.ldap" class="openscim.restful.server.resources.group.ldap.LdapGroupResource" >
 		<property name='ldapTemplate' ref='ldapTemplate'/>
+		<property name='properties' ref='scim.customPropertiesFactory'/>
 	</bean>
+	
+	<!-- 
+	<bean id="resource.scim.users.ldap" class="openscim.restful.server.resources.user.ldap.LdapUsersResource" >
+		<property name='ldapTemplate' ref='ldapTemplate'/>
+		<property name='properties' ref='scim.customPropertiesFactory'/>
+	</bean>	
 	<bean id="resource.scim.groups.ldap" class="openscim.restful.server.resources.group.ldap.LdapGroupsResource" >
 		<property name='ldapTemplate' ref='ldapTemplate'/>
+		<property name='properties' ref='scim.customPropertiesFactory'/>
 	</bean>
 	<bean id="resource.scim.schema.ldap" class="openscim.restful.server.resources.schema.ldap.LdapSchemaResource" >
 		<property name='ldapTemplate' ref='ldapTemplate'/>
+		<property name='properties' ref='scim.customPropertiesFactory'/>
 	</bean>
 	<bean id="resource.scim.schemas.ldap" class="openscim.restful.server.resources.schema.ldap.LdapSchemasResource" >
 		<property name='ldapTemplate' ref='ldapTemplate'/>
-	</bean>	
+		<property name='properties' ref='scim.customPropertiesFactory'/>
+	</bean>
+	 -->	
 
     <!--  setup the custom properties factory -->
 	<bean id="scim.customPropertiesFactory"

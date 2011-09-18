@@ -129,10 +129,10 @@ public class LdapUserResource extends UserResource
 				try
 				{
 					// retrieve the user
-					User lookedupUser = (User)ldapTemplate.lookup(user.getId(), new UserAttributesMapper());				
+					User lookedUser = (User)ldapTemplate.lookup(user.getId(), new UserAttributesMapper());				
 					
 					// check if the user was found
-					if(lookedupUser != null)
+					if(lookedUser != null)
 					{
 						// user already exists				
 						return ResourceUtilities.buildErrorResponse(HttpStatus.CONFLICT, HttpStatus.CONFLICT.getMessage() + ": Resource " + user.getId() + " already exists");
@@ -292,25 +292,27 @@ public class LdapUserResource extends UserResource
 				// set the emails
 				if(user.getEmails() != null)
 				{
-					Attribute attribute = new BasicAttribute("mail");
+					Attribute emailAttribute = new BasicAttribute("mail");
 					List<PluralAttribute> emails = user.getEmails().getEmail();
 					for(PluralAttribute email : emails)
 					{						
-						attribute.add(email.getValue());
+						emailAttribute.add(email.getValue());
 					}
-					userAttributes.put(attribute);
+					ModificationItem emailItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, emailAttribute);
+					items.add(emailItem);
 				}
 					    
 			    // set the telephones
 				if(user.getPhoneNumbers() != null)
 				{
-					Attribute attribute = new BasicAttribute("telephoneNumber");
+					Attribute telephoneAttribute = new BasicAttribute("telephoneNumber");
 					List<PluralAttribute> telephones = user.getPhoneNumbers().getPhoneNumber();
 					for(PluralAttribute telephone : telephones)
 					{						
-						attribute.add(telephone.getValue());
+						telephoneAttribute.add(telephone.getValue());
 					}
-					userAttributes.put(attribute);
+					ModificationItem telephoneItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, telephoneAttribute);
+					items.add(telephoneItem);
 				}
 				
 				// build a password modification

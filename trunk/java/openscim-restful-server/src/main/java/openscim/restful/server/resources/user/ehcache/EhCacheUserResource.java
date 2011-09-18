@@ -316,7 +316,7 @@ public class EhCacheUserResource extends UserResource
 		    	User cached = (User)cachedUser.getObjectValue();
 		    	cached.setPassword(user.getPassword());
 		    	
-		    	// user removed successfully
+		    	// password changed successfully
 		    	return Response.status(HttpStatus.NO_CONTENT.getCode()).build();
 		    }
 		    else

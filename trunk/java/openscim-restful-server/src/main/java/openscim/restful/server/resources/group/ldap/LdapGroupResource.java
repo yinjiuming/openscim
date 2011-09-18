@@ -36,15 +36,12 @@ import javax.ws.rs.core.UriInfo;
 
 import openscim.entities.Group;
 import openscim.entities.PluralAttribute;
-import openscim.entities.User;
 import openscim.restful.server.resources.group.GroupResource;
-import openscim.restful.server.resources.user.ldap.UserAttributesMapper;
 import openscim.restful.server.resources.util.ResourceUtilities;
 
 import org.apache.log4j.Logger;
 import org.apache.wink.common.http.HttpStatus;
 import org.springframework.ldap.core.LdapTemplate;
-
 
 public class LdapGroupResource extends GroupResource
 {
@@ -134,19 +131,27 @@ public class LdapGroupResource extends GroupResource
 	 */
 	@Override
 	public Response createGroup(UriInfo uriInfo, Group group)
-	{
+	{				
 		// check the ldap template has been setup correctly
 		if(ldapTemplate != null)
 		{
 			try
 			{
+				// get the basedn
+				String basedn = GroupAttributesMapper.DEFAULT_GROUP_BASEDN;
+				if(properties.containsKey(GroupAttributesMapper.GROUP_BASEDN)) basedn = properties.getProperty(GroupAttributesMapper.GROUP_BASEDN);
+				
+				// get the gid attribute name
+				String gidAtttributeName = GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE;
+				if(properties.containsKey(GroupAttributesMapper.GID_ATTRIBUTE)) gidAtttributeName = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE);
+				
 				try
 				{
 					// create the mapper if it doesn't already exists
 					if(mapper == null) mapper = new GroupAttributesMapper(properties);
 					
 					// retrieve the group
-					Group lookedGroup = (Group)ldapTemplate.lookup(group.getId(), mapper);				
+					Group lookedGroup = (Group)ldapTemplate.lookup(gidAtttributeName + "=" + group.getId() + "," + basedn, mapper);				
 					
 					// check if the group was found
 					if(lookedGroup != null)
@@ -174,10 +179,6 @@ public class LdapGroupResource extends GroupResource
 					groupAttributes.put("objectclass", scanner.next());
 				}
 				
-				// get the gid attribute name
-				String gidAtttributeName = GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE;
-				if(properties.containsKey(GroupAttributesMapper.GID_ATTRIBUTE)) gidAtttributeName = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE);
-				
 				// set the gid
 				groupAttributes.put(gidAtttributeName, group.getId());								
 				
@@ -186,28 +187,26 @@ public class LdapGroupResource extends GroupResource
 				if(properties.containsKey(GroupAttributesMapper.MEMBER_ATTRIBUTE)) memberAtttributeName = properties.getProperty(GroupAttributesMapper.MEMBER_ATTRIBUTE);
 				
 				// set the members
+				Attribute memberAttribute = new BasicAttribute(memberAtttributeName);
 				if(group.getAny() instanceof List)
 				{
 					List members = (List)group.getAny();					
-					Attribute attribute = new BasicAttribute(memberAtttributeName);
 					for(Object object : members)
 					{
 						if(object instanceof PluralAttribute)
 						{
 							PluralAttribute member = (PluralAttribute)object;
-							attribute.add(member.getValue());
+							memberAttribute.add(member.getValue());
 						}
 					}
-				}								
-				
-				// set the set with description
-			    groupAttributes.put("description", "Created via SCIM Restful Server for Java");
+				}
+				groupAttributes.put(memberAttribute);
 				
 			    // create the group
-			    ldapTemplate.bind(group.getId(), null, groupAttributes);
+			    ldapTemplate.bind(gidAtttributeName + "=" + group.getId() + "," + basedn, null, groupAttributes);
 				
 				// determine the url of the new resource
-				URI location = new URI("/Group/" + group.getId());
+				URI location = new URI("/Group/" + gidAtttributeName + "=" + group.getId() + "," + basedn);
 				
 				// group stored successfully, return the group				
 				return Response.created(location).entity(group).build();
@@ -297,12 +296,7 @@ public class LdapGroupResource extends GroupResource
 					}
 					ModificationItem memberItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, memberAttribute);
 					items.add(memberItem);					
-				}			    
-				
-			    // build a description modification
-			    Attribute descriptionAttribute = new BasicAttribute("description", "Created via SCIM Restful Server for Java");				
-				ModificationItem descriptionItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, descriptionAttribute);
-			    items.add(descriptionItem);
+				}
 				
 				// update the user password
 				ModificationItem[] itemsArray = items.toArray(new ModificationItem[items.size()]);

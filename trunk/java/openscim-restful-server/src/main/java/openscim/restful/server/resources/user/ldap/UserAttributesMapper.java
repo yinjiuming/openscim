@@ -18,6 +18,8 @@
  */
 package openscim.restful.server.resources.user.ldap;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import javax.naming.NamingEnumeration;
@@ -27,6 +29,7 @@ import openscim.entities.Name;
 import openscim.entities.PluralAttribute;
 import openscim.entities.User;
 import openscim.entities.User.Emails;
+import openscim.entities.User.MemberOf;
 import openscim.entities.User.PhoneNumbers;
 import openscim.restful.server.resources.util.ResourceUtilities;
 
@@ -44,7 +47,8 @@ public class UserAttributesMapper implements AttributesMapper
 	public static final String GIVENNAME_ATTRIBUTE = ATTRIBUTE_PREFIX + "givenName";
 	public static final String MAIL_ATTRIBUTE = ATTRIBUTE_PREFIX + "mail";
 	public static final String TELEPHONE_ATTRIBUTE = ATTRIBUTE_PREFIX + "telephone";
-	public static final String PASSWORD_ATTRIBUTE = ATTRIBUTE_PREFIX + "password";	
+	public static final String PASSWORD_ATTRIBUTE = ATTRIBUTE_PREFIX + "password";
+	public static final String MEMBEROF_ATTRIBUTE = ATTRIBUTE_PREFIX + "memberOf";
 	public static final String DEFAULT_ACCOUNT_OBJECTCLASS_ATTRIBUTE = "inetOrgPerson, organizationalPerson, person, top";
 	public static final String DEFAULT_UID_ATTRIBUTE = "uid";
 	public static final String DEFAULT_DISPLAYNAME_ATTRIBUTE = "cn";
@@ -53,6 +57,10 @@ public class UserAttributesMapper implements AttributesMapper
 	public static final String DEFAULT_MAIL_ATTRIBUTE = "mail";
 	public static final String DEFAULT_TELEPHONE_ATTRIBUTE = "telephone";
 	public static final String DEFAULT_PASSWORD_ATTRIBUTE = "userPassword";
+	public static final String DEFAULT_MEMBEROF_ATTRIBUTE = "memberOf";
+	public static final String ACCOUNT_PREFIX = "account.";
+	public static final String ACCOUNT_BASEDN = ACCOUNT_PREFIX + "basedn";
+	public static final String DEFAULT_ACCOUNT_BASEDN = "ou=users,dc=openscim";
 	
 	private Properties properties = null;
 	
@@ -174,6 +182,33 @@ public class UserAttributesMapper implements AttributesMapper
 		Attribute passwordAttribute = attributes.get(passwordAtttributeName);
 		if(passwordAttribute != null) user.setPassword(new String((byte[])passwordAttribute.get()));
 
+		// get the memberOf attribute name
+		String memberOfAtttributeName = DEFAULT_MEMBEROF_ATTRIBUTE;
+		if(properties.containsKey(MEMBEROF_ATTRIBUTE)) memberOfAtttributeName = properties.getProperty(MEMBEROF_ATTRIBUTE);
+		
+		// get the memberOf
+		NamingEnumeration memberOfEnumeration = attributes.get(memberOfAtttributeName).getAll();
+		if(memberOfEnumeration != null)
+		{
+			// create a memberof resource
+			MemberOf memberof = ResourceUtilities.FACTORY.createUserMemberOf();
+			
+			while(memberOfEnumeration.hasMoreElements())
+			{
+				// get the next member
+				String memberOfAttribute = (String)memberOfEnumeration.next();
+				if(memberOfAttribute != null)
+				{				
+					PluralAttribute pluralAttribute = ResourceUtilities.FACTORY.createPluralAttribute();
+					pluralAttribute.setValue(memberOfAttribute);					
+					memberof.getGroup().add(pluralAttribute);
+				}
+			}
+			
+			// add the memberOf to the user resource
+			user.setMemberOf(memberof);
+		}				
+		
 		return user;
      }
 }

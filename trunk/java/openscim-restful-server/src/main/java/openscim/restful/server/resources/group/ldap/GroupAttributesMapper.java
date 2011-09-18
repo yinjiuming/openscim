@@ -29,8 +29,6 @@ import javax.naming.directory.Attributes;
 
 import openscim.entities.Group;
 import openscim.entities.PluralAttribute;
-import openscim.entities.User;
-import openscim.entities.User.Emails;
 import openscim.restful.server.resources.util.ResourceUtilities;
 
 import org.springframework.ldap.core.AttributesMapper;
@@ -43,7 +41,10 @@ public class GroupAttributesMapper implements AttributesMapper
 	public static final String MEMBER_ATTRIBUTE = ATTRIBUTE_PREFIX + "member";	
 	public static final String DEFAULT_GROUP_OBJECTCLASS_ATTRIBUTE = "groupOfNames";
 	public static final String DEFAULT_GID_ATTRIBUTE = "cn";
-	public static final String DEFAULT_MEMBER_ATTRIBUTE = "member";
+	public static final String DEFAULT_MEMBER_ATTRIBUTE = "member";	
+	public static final String GROUP_PREFIX = "group.";
+	public static final String GROUP_BASEDN = GROUP_PREFIX + "basedn";
+	public static final String DEFAULT_GROUP_BASEDN = "ou=groups,dc=openscim";
 	
 	private Properties properties = null;
 	
@@ -67,7 +68,7 @@ public class GroupAttributesMapper implements AttributesMapper
 		
 		// get the member attribute name
 		String memberAtttributeName = DEFAULT_MEMBER_ATTRIBUTE;
-		if(properties.containsKey(MEMBER_ATTRIBUTE)) memberAtttributeName = properties.getProperty(MEMBER_ATTRIBUTE);
+		if(properties.containsKey(MEMBER_ATTRIBUTE)) memberAtttributeName = properties.getProperty(MEMBER_ATTRIBUTE);						
 		
 		// get the members
 		NamingEnumeration memberEnumeration = attributes.get(memberAtttributeName).getAll();

@@ -18,6 +18,8 @@
  */
 package openscim.restful.server.resources.user.ldap;
 
+import java.util.Properties;
+
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 
@@ -34,35 +36,80 @@ import javax.naming.directory.Attribute;
 
 public class UserAttributesMapper implements AttributesMapper
 {
+	public static final String ATTRIBUTE_PREFIX = "attributes.account.";
+	public static final String ACCOUNT_OBJECTCLASS_ATTRIBUTE = ATTRIBUTE_PREFIX + "objectclass";
+	public static final String UID_ATTRIBUTE = ATTRIBUTE_PREFIX + "uid";
+	public static final String DISPLAYNAME_ATTRIBUTE = ATTRIBUTE_PREFIX + "displayName";
+	public static final String FAMILYNAME_ATTRIBUTE = ATTRIBUTE_PREFIX + "familyName";
+	public static final String GIVENNAME_ATTRIBUTE = ATTRIBUTE_PREFIX + "givenName";
+	public static final String MAIL_ATTRIBUTE = ATTRIBUTE_PREFIX + "mail";
+	public static final String TELEPHONE_ATTRIBUTE = ATTRIBUTE_PREFIX + "telephone";
+	public static final String PASSWORD_ATTRIBUTE = ATTRIBUTE_PREFIX + "password";	
+	public static final String DEFAULT_ACCOUNT_OBJECTCLASS_ATTRIBUTE = "inetOrgPerson, organizationalPerson, person, top";
+	public static final String DEFAULT_UID_ATTRIBUTE = "uid";
+	public static final String DEFAULT_DISPLAYNAME_ATTRIBUTE = "cn";
+	public static final String DEFAULT_FAMILYNAME_ATTRIBUTE = "sn";
+	public static final String DEFAULT_GIVENNAME_ATTRIBUTE = "givenName";
+	public static final String DEFAULT_MAIL_ATTRIBUTE = "mail";
+	public static final String DEFAULT_TELEPHONE_ATTRIBUTE = "telephone";
+	public static final String DEFAULT_PASSWORD_ATTRIBUTE = "userPassword";
+	
+	private Properties properties = null;
+	
+	public UserAttributesMapper(Properties properties)
+	{
+		this.properties = properties;
+	}
+	
 	public Object mapFromAttributes(Attributes attributes) throws NamingException
 	{
 		// create a user resource
 		User user = ResourceUtilities.FACTORY.createUser();
 		
-		// get the uid
-		Attribute uidAttribute = attributes.get("uid");
+		// get the uid attribute name
+		String uidAtttributeName = DEFAULT_UID_ATTRIBUTE;
+		if(properties.containsKey(UID_ATTRIBUTE)) uidAtttributeName = properties.getProperty(UID_ATTRIBUTE);
+		
+		// get the uid		
+		Attribute uidAttribute = attributes.get(uidAtttributeName);
 		if(uidAttribute != null) user.setId((String)uidAttribute.get());
 		
+		// get the display name attribute name
+		String displayAtttributeName = DEFAULT_DISPLAYNAME_ATTRIBUTE;
+		if(properties.containsKey(DISPLAYNAME_ATTRIBUTE)) displayAtttributeName = properties.getProperty(DISPLAYNAME_ATTRIBUTE);
+		
 		// get the display name
-		Attribute displayNameAttribute = attributes.get("cn");
+		Attribute displayNameAttribute = attributes.get(displayAtttributeName);
 		if(displayNameAttribute != null) user.setDisplayName((String)displayNameAttribute.get());
 		
 		// create a user name resource
 		Name name = ResourceUtilities.FACTORY.createName();
 
+		// get the surname attribute name
+		String surnameAtttributeName = DEFAULT_FAMILYNAME_ATTRIBUTE;
+		if(properties.containsKey(FAMILYNAME_ATTRIBUTE)) surnameAtttributeName = properties.getProperty(FAMILYNAME_ATTRIBUTE);
+		
 		// get the surname name
-		Attribute surnameAttribute = attributes.get("sn"); 
+		Attribute surnameAttribute = attributes.get(surnameAtttributeName); 
 		if(surnameAttribute != null) name.setFamilyName((String)surnameAttribute.get());
 		
+		// get the given name attribute name
+		String givenAtttributeName = DEFAULT_GIVENNAME_ATTRIBUTE;
+		if(properties.containsKey(GIVENNAME_ATTRIBUTE)) givenAtttributeName = properties.getProperty(GIVENNAME_ATTRIBUTE);
+		
 		// get the given name
-		Attribute givenAttribute = attributes.get("givenName");
+		Attribute givenAttribute = attributes.get(givenAtttributeName);
 		if(givenAttribute != null) name.setGivenName((String)givenAttribute.get());
 		
 		// add the name to the user resource
 		user.setName(name);
 		
+		// get the email attribute name
+		String mailAtttributeName = DEFAULT_MAIL_ATTRIBUTE;
+		if(properties.containsKey(MAIL_ATTRIBUTE)) mailAtttributeName = properties.getProperty(MAIL_ATTRIBUTE);
+		
 		// get the mails
-		NamingEnumeration mailEnumeration = attributes.get("mail").getAll();
+		NamingEnumeration mailEnumeration = attributes.get(mailAtttributeName).getAll();
 		if(mailEnumeration != null)
 		{
 			// create a emails resource
@@ -88,8 +135,12 @@ public class UserAttributesMapper implements AttributesMapper
 			user.setEmails(emails);
 		}
 		
+		// get the telephone attribute name
+		String telephoneAtttributeName = DEFAULT_TELEPHONE_ATTRIBUTE;
+		if(properties.containsKey(TELEPHONE_ATTRIBUTE)) telephoneAtttributeName = properties.getProperty(TELEPHONE_ATTRIBUTE);
+		
 		// get the telephones
-		NamingEnumeration telephoneEnumeration = attributes.get("telephoneNumber").getAll();
+		NamingEnumeration telephoneEnumeration = attributes.get(telephoneAtttributeName).getAll();
 		if(telephoneEnumeration != null)
 		{
 			// create a telephones resource
@@ -115,8 +166,12 @@ public class UserAttributesMapper implements AttributesMapper
 			user.setPhoneNumbers(telephones);
 		}
 		
+		// get the password attribute name
+		String passwordAtttributeName = DEFAULT_PASSWORD_ATTRIBUTE;
+		if(properties.containsKey(PASSWORD_ATTRIBUTE)) passwordAtttributeName = properties.getProperty(PASSWORD_ATTRIBUTE);
+		
 		// get the password
-		Attribute passwordAttribute = attributes.get("userpassword");
+		Attribute passwordAttribute = attributes.get(passwordAtttributeName);
 		if(passwordAttribute != null) user.setPassword(new String((byte[])passwordAttribute.get()));
 
 		return user;

@@ -20,6 +20,7 @@ package openscim.restful.server.resources.user.ldap;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.naming.directory.Attribute;
@@ -56,6 +57,11 @@ public class LdapUserResource extends UserResource
 		this.ldapTemplate = ldapTemplate;
 	}
 	
+	
+	/*
+	 * @see 
+	 * openscim.restful.server.resources.user.UserResource#retrieveUser(javax.ws.rs.core.UriInfo,java.lang.String)
+	 */
 	@Override
 	public Response retrieveUser(@Context UriInfo uriInfo, @PathParam("uid") String uid)
 	{	
@@ -107,6 +113,11 @@ public class LdapUserResource extends UserResource
 		}		
 	}
 
+	
+	/*
+	 * @see 
+	 * openscim.restful.server.resources.user.UserResource#createUser(javax.ws.rs.core.UriInfo,openscim.entities.User)
+	 */
 	@Override
 	public Response createUser(UriInfo uriInfo, User user)
 	{
@@ -177,6 +188,9 @@ public class LdapUserResource extends UserResource
 					userAttributes.put(attribute);
 				}
 				
+				// set the password
+				if(user.getPassword() != null) userAttributes.put("userPassword", user.getPassword());
+				
 				// set the set with description
 			    userAttributes.put("description", "Created via SCIM Restful Server for Java");
 				
@@ -217,14 +231,132 @@ public class LdapUserResource extends UserResource
 	}
 
 	
+	/*
+	 * @see 
+	 * openscim.restful.server.resources.user.UserResource#updateUser(javax.ws.rs.core.UriInfo,openscim.entities.User)
+	 */
 	@Override
 	public Response updateUser(UriInfo uriInfo, String uid, User user)
 	{
-		// return an operation unsupported response
-		return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_IMPLEMENTED, HttpStatus.NOT_IMPLEMENTED.getMessage() + ": Service Provider does not support the update user operation");
+		// check the ldap template has been setup correctly
+		if(ldapTemplate != null)
+		{
+			try
+			{								
+				// retrieve the user
+				User lookedupUser = (User)ldapTemplate.lookup(uid, new UserAttributesMapper());				
+				
+				// check if the user was found
+				if(lookedupUser == null)
+				{
+					// user not found, return an error message
+			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
+				}
+				
+				List<ModificationItem> items = new ArrayList<ModificationItem>();
+				
+				// build a uid modification
+			    if(user.getPassword() != null)
+			    {
+			    	Attribute uidAttribute = new BasicAttribute("uid", user.getId());				
+					ModificationItem uidItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, uidAttribute);
+					items.add(uidItem);
+			    }
+				
+				// build a cn modification
+			    if(user.getPassword() != null)
+			    {
+			    	Attribute cnAttribute = new BasicAttribute("cn", user.getDisplayName());				
+					ModificationItem cnItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, cnAttribute);
+					items.add(cnItem);
+			    }
+								
+				// build names modification
+				if(user.getName() != null)
+				{
+					if(user.getName().getFamilyName() != null)
+				    {
+				    	Attribute snAttribute = new BasicAttribute("sn", user.getName().getFamilyName());				
+						ModificationItem snItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, snAttribute);
+						items.add(snItem);
+				    }
+					
+					if(user.getName().getGivenName() != null)
+				    {
+				    	Attribute gnAttribute = new BasicAttribute("givenName", user.getName().getGivenName());				
+						ModificationItem gnItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, gnAttribute);
+						items.add(gnItem);
+				    }					
+				}
+				
+				// set the emails
+				if(user.getEmails() != null)
+				{
+					Attribute attribute = new BasicAttribute("mail");
+					List<PluralAttribute> emails = user.getEmails().getEmail();
+					for(PluralAttribute email : emails)
+					{						
+						attribute.add(email.getValue());
+					}
+					userAttributes.put(attribute);
+				}
+					    
+			    // set the telephones
+				if(user.getPhoneNumbers() != null)
+				{
+					Attribute attribute = new BasicAttribute("telephoneNumber");
+					List<PluralAttribute> telephones = user.getPhoneNumbers().getPhoneNumber();
+					for(PluralAttribute telephone : telephones)
+					{						
+						attribute.add(telephone.getValue());
+					}
+					userAttributes.put(attribute);
+				}
+				
+				// build a password modification
+			    if(user.getPassword() != null)
+			    {
+			    	Attribute passwordAttribute = new BasicAttribute("userPassword", user.getPassword());				
+					ModificationItem passwordItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, passwordAttribute);
+					items.add(passwordItem);
+			    }
+				
+			    // build a description modification
+			    Attribute descriptionAttribute = new BasicAttribute("description", "Created via SCIM Restful Server for Java");				
+				ModificationItem descriptionItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, descriptionAttribute);
+			    items.add(descriptionItem);
+				
+				// update the user password
+				ModificationItem[] itemsArray = items.toArray(new ModificationItem[items.size()]);
+				ldapTemplate.modifyAttributes(user.getId(), itemsArray);
+			    
+				// password changed successfully
+			    return Response.status(HttpStatus.NO_CONTENT.getCode()).build();				
+			}
+			catch(Exception nException)
+			{
+				logger.debug("Resource " + uid + " not found");
+				logger.debug(nException);
+				
+				// user not found, return an error message
+		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
+			}
+		}
+		else
+		{
+			// ldap not configured
+			logger.error("ldap not configured");
+			
+			// return a server error
+			return ResourceUtilities.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.NOT_IMPLEMENTED.getMessage() + ": Service Provider user ldap repository not configured");
+		}
 	}
 
 	
+	/*
+	 * @see 
+	 * openscim.restful.server.resources.user.UserResource#deleteUser(javax.ws.rs.core.UriInfo,java.lang.String)
+	 */
 	@Override
 	public Response deleteUser(UriInfo uriInfo, String uid)
 	{
@@ -269,6 +401,10 @@ public class LdapUserResource extends UserResource
 	}
 	
 	
+	/*
+	 * @see 
+	 * openscim.restful.server.resources.user.UserResource#deleteUser(javax.ws.rs.core.UriInfo,java.lang.String,openscim.entities.User)
+	 */
 	@Override
 	public Response changePassword(UriInfo uriInfo, String uid, User user)
 	{

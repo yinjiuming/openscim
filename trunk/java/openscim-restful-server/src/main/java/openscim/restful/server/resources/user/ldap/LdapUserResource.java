@@ -22,6 +22,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
@@ -51,12 +52,22 @@ public class LdapUserResource extends UserResource
 	
 	// ldap parameters
 	private LdapTemplate ldapTemplate = null;
-	 
+	
+	// ldap attribute mapping properties
+	private Properties properties = null;
+	
+	// ldap attribute mapper
+	private UserAttributesMapper mapper = null;		
+	
 	public void setLdapTemplate(LdapTemplate ldapTemplate)
 	{
 		this.ldapTemplate = ldapTemplate;
 	}
 	
+	public void setProperties(Properties properties)
+	{
+		this.properties = properties;
+	}
 	
 	/*
 	 * @see 
@@ -70,8 +81,11 @@ public class LdapUserResource extends UserResource
 		{
 			try
 			{
+				// create the mapper if it doesn't already exists
+				if(mapper == null) mapper = new UserAttributesMapper(properties);
+				
 				// retrieve the user
-				User user = (User)ldapTemplate.lookup(uid, new UserAttributesMapper());				
+				User user = (User)ldapTemplate.lookup(uid, mapper);				
 				
 				// check if the user was found
 				if(user == null)
@@ -128,8 +142,11 @@ public class LdapUserResource extends UserResource
 			{
 				try
 				{
+					// create the mapper if it doesn't already exists
+					if(mapper == null) mapper = new UserAttributesMapper(properties);
+					
 					// retrieve the user
-					User lookedUser = (User)ldapTemplate.lookup(user.getId(), new UserAttributesMapper());				
+					User lookedUser = (User)ldapTemplate.lookup(user.getId(), mapper);				
 					
 					// check if the user was found
 					if(lookedUser != null)
@@ -145,29 +162,53 @@ public class LdapUserResource extends UserResource
 				
 				Attributes userAttributes = new BasicAttributes();
 				
+				// get the objectclasses
+				String objectclasses = UserAttributesMapper.DEFAULT_ACCOUNT_OBJECTCLASS_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.ACCOUNT_OBJECTCLASS_ATTRIBUTE)) objectclasses = properties.getProperty(UserAttributesMapper.ACCOUNT_OBJECTCLASS_ATTRIBUTE);
+				
 				// set the objectclass of the user
 				userAttributes.put("objectclass", "inetOrgPerson");
 				userAttributes.put("objectclass", "organizationalPerson");
 				userAttributes.put("objectclass", "person");
 				userAttributes.put("objectclass", "top");
 				
-				// set the uid
-				userAttributes.put("uid", user.getId());
+				// get the uid attribute name
+				String uidAtttributeName = UserAttributesMapper.DEFAULT_UID_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.UID_ATTRIBUTE)) uidAtttributeName = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE);
 				
-				// set the cn
-				if(user.getDisplayName() != null) userAttributes.put("cn", user.getDisplayName());
+				// set the uid
+				userAttributes.put(uidAtttributeName, user.getId());
+				
+				// get the display name attribute name
+				String displayAtttributeName = UserAttributesMapper.DEFAULT_DISPLAYNAME_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.DISPLAYNAME_ATTRIBUTE)) displayAtttributeName = properties.getProperty(UserAttributesMapper.DISPLAYNAME_ATTRIBUTE);
+				
+				// set the display name
+				if(user.getDisplayName() != null) userAttributes.put(displayAtttributeName, user.getDisplayName());
+				
+				// get the surname attribute name
+				String surnameAtttributeName = UserAttributesMapper.DEFAULT_FAMILYNAME_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.FAMILYNAME_ATTRIBUTE)) surnameAtttributeName = properties.getProperty(UserAttributesMapper.FAMILYNAME_ATTRIBUTE);
+				
+				// get the given name attribute name
+				String givenAtttributeName = UserAttributesMapper.DEFAULT_GIVENNAME_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.GIVENNAME_ATTRIBUTE)) givenAtttributeName = properties.getProperty(UserAttributesMapper.GIVENNAME_ATTRIBUTE);
 				
 				// set the names
 				if(user.getName() != null)
 				{
-					if(user.getName().getFamilyName() != null) userAttributes.put("sn", user.getName().getFamilyName());
-					if(user.getName().getGivenName() != null) userAttributes.put("givenName", user.getName().getGivenName());
+					if(user.getName().getFamilyName() != null) userAttributes.put(surnameAtttributeName, user.getName().getFamilyName());
+					if(user.getName().getGivenName() != null) userAttributes.put(givenAtttributeName, user.getName().getGivenName());
 				}
+				
+				// get the email attribute name
+				String mailAtttributeName = UserAttributesMapper.DEFAULT_MAIL_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.MAIL_ATTRIBUTE)) mailAtttributeName = properties.getProperty(UserAttributesMapper.MAIL_ATTRIBUTE);
 				
 				// set the emails
 				if(user.getEmails() != null)
 				{
-					Attribute attribute = new BasicAttribute("mail");
+					Attribute attribute = new BasicAttribute(mailAtttributeName);
 					List<PluralAttribute> emails = user.getEmails().getEmail();
 					for(PluralAttribute email : emails)
 					{						
@@ -175,11 +216,15 @@ public class LdapUserResource extends UserResource
 					}
 					userAttributes.put(attribute);
 				}
-					    
+				
+				// get the telephone attribute name
+				String telephoneAtttributeName = UserAttributesMapper.DEFAULT_TELEPHONE_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.TELEPHONE_ATTRIBUTE)) telephoneAtttributeName = properties.getProperty(UserAttributesMapper.TELEPHONE_ATTRIBUTE);
+				
 			    // set the telephones
 				if(user.getPhoneNumbers() != null)
 				{
-					Attribute attribute = new BasicAttribute("telephoneNumber");
+					Attribute attribute = new BasicAttribute(telephoneAtttributeName);
 					List<PluralAttribute> telephones = user.getPhoneNumbers().getPhoneNumber();
 					for(PluralAttribute telephone : telephones)
 					{						
@@ -188,8 +233,12 @@ public class LdapUserResource extends UserResource
 					userAttributes.put(attribute);
 				}
 				
+				// get the password attribute name
+				String passwordAtttributeName = UserAttributesMapper.DEFAULT_PASSWORD_ATTRIBUTE;
+				if(properties.containsKey(UserAttributesMapper.PASSWORD_ATTRIBUTE)) passwordAtttributeName = properties.getProperty(UserAttributesMapper.PASSWORD_ATTRIBUTE);
+				
 				// set the password
-				if(user.getPassword() != null) userAttributes.put("userPassword", user.getPassword());
+				if(user.getPassword() != null) userAttributes.put(passwordAtttributeName, user.getPassword());
 				
 				// set the set with description
 			    userAttributes.put("description", "Created via SCIM Restful Server for Java");
@@ -242,9 +291,12 @@ public class LdapUserResource extends UserResource
 		if(ldapTemplate != null)
 		{
 			try
-			{								
+			{
+				// create the mapper if it doesn't already exists
+				if(mapper == null) mapper = new UserAttributesMapper(properties);
+				
 				// retrieve the user
-				User lookedupUser = (User)ldapTemplate.lookup(uid, new UserAttributesMapper());				
+				User lookedupUser = (User)ldapTemplate.lookup(uid, mapper);				
 				
 				// check if the user was found
 				if(lookedupUser == null)
@@ -330,7 +382,7 @@ public class LdapUserResource extends UserResource
 				
 				// update the user password
 				ModificationItem[] itemsArray = items.toArray(new ModificationItem[items.size()]);
-				ldapTemplate.modifyAttributes(user.getId(), itemsArray);
+				ldapTemplate.modifyAttributes(uid, itemsArray);
 			    
 				// password changed successfully
 			    return Response.status(HttpStatus.NO_CONTENT.getCode()).build();				
@@ -367,8 +419,11 @@ public class LdapUserResource extends UserResource
 		{
 			try
 			{
+				// create the mapper if it doesn't already exists
+				if(mapper == null) mapper = new UserAttributesMapper(properties);
+				
 				// retrieve the user
-				User user = (User)ldapTemplate.lookup(uid, new UserAttributesMapper());				
+				User user = (User)ldapTemplate.lookup(uid, mapper);				
 				
 				// check if the user was found
 				if(user == null)
@@ -414,12 +469,15 @@ public class LdapUserResource extends UserResource
 		if(ldapTemplate != null)
 		{
 			try
-			{								
+			{
+				// create the mapper if it doesn't already exists
+				if(mapper == null) mapper = new UserAttributesMapper(properties);
+				
 				// retrieve the user
-				User lookedupUser = (User)ldapTemplate.lookup(uid, new UserAttributesMapper());				
+				User lookedUser = (User)ldapTemplate.lookup(uid, mapper);				
 				
 				// check if the user was found
-				if(lookedupUser == null)
+				if(lookedUser == null)
 				{
 					// user not found, return an error message
 			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
@@ -430,7 +488,7 @@ public class LdapUserResource extends UserResource
 				ModificationItem passwordItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, passwordAttribute);
 			    
 				// update the user password
-				ldapTemplate.modifyAttributes(user.getId(), new ModificationItem[]{passwordItem});
+				ldapTemplate.modifyAttributes(uid, new ModificationItem[]{passwordItem});
 			    
 				// password changed successfully
 			    return Response.status(HttpStatus.NO_CONTENT.getCode()).build();				

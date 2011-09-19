@@ -104,6 +104,10 @@ public class LdapGroupResource extends GroupResource
 				
 				// determine the url of the new resource
 				URI location = new URI("/Group/" + dn);
+			    if(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS))
+			    {
+			    	location = new URI("/User/" + gid);
+			    }
 				
 				// user stored successfully, return the group				
 				return Response.ok(group).location(location).build();
@@ -227,7 +231,11 @@ public class LdapGroupResource extends GroupResource
 			    ldapTemplate.bind(dn, null, groupAttributes);
 				
 				// determine the url of the new resource
-				URI location = new URI("/Group/" + dn);
+			    URI location = new URI("/Group/" + dn);
+			    if(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS))
+			    {
+			    	location = new URI("/User/" + group.getId());
+			    }
 				
 				// group stored successfully, return the group				
 				return Response.created(location).entity(group).build();

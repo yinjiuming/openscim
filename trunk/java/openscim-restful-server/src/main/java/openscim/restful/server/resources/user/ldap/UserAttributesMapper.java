@@ -18,12 +18,14 @@
  */
 package openscim.restful.server.resources.user.ldap;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
+import javax.naming.directory.Attribute;
+import javax.naming.directory.Attributes;
 
 import openscim.entities.Name;
 import openscim.entities.PluralAttribute;
@@ -31,15 +33,15 @@ import openscim.entities.User;
 import openscim.entities.User.Emails;
 import openscim.entities.User.MemberOf;
 import openscim.entities.User.PhoneNumbers;
+import openscim.restful.server.resources.group.ldap.GroupAttributesMapper;
 import openscim.restful.server.resources.util.ResourceUtilities;
 
 import org.springframework.ldap.core.AttributesMapper;
-import javax.naming.directory.Attributes;
-import javax.naming.directory.Attribute;
 
 public class UserAttributesMapper implements AttributesMapper
 {
-	public static final String ATTRIBUTE_PREFIX = "attributes.account.";
+	public static final String LDAP_PREFIX = "ldap.";
+	public static final String ATTRIBUTE_PREFIX = LDAP_PREFIX + "attributes.account.";
 	public static final String ACCOUNT_OBJECTCLASS_ATTRIBUTE = ATTRIBUTE_PREFIX + "objectclass";
 	public static final String UID_ATTRIBUTE = ATTRIBUTE_PREFIX + "uid";
 	public static final String DISPLAYNAME_ATTRIBUTE = ATTRIBUTE_PREFIX + "displayName";
@@ -58,15 +60,22 @@ public class UserAttributesMapper implements AttributesMapper
 	public static final String DEFAULT_TELEPHONE_ATTRIBUTE = "telephone";
 	public static final String DEFAULT_PASSWORD_ATTRIBUTE = "userPassword";
 	public static final String DEFAULT_MEMBEROF_ATTRIBUTE = "memberOf";
-	public static final String ACCOUNT_PREFIX = "account.";
+	public static final String ACCOUNT_PREFIX = "ldap.account.";
 	public static final String ACCOUNT_BASEDN = ACCOUNT_PREFIX + "basedn";
 	public static final String DEFAULT_ACCOUNT_BASEDN = "ou=users,dc=openscim";
+	public static final String CONCEAL_ACCOUNT_DNS = LDAP_PREFIX + "concealdns";
+	public static final String DEFAULT_CONCEAL_ACCOUNT_DNS = "true";
 	
 	private Properties properties = null;
+	private String expression = null;
+	private Pattern pattern = null;
 	
 	public UserAttributesMapper(Properties properties)
 	{
 		this.properties = properties;
+		expression = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE, GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE) + 
+		   "=([^,]*)," + properties.getProperty(GroupAttributesMapper.GROUP_BASEDN, GroupAttributesMapper.DEFAULT_GROUP_BASEDN);
+		pattern = Pattern.compile(expression);
 	}
 	
 	public Object mapFromAttributes(Attributes attributes) throws NamingException
@@ -75,16 +84,14 @@ public class UserAttributesMapper implements AttributesMapper
 		User user = ResourceUtilities.FACTORY.createUser();
 		
 		// get the uid attribute name
-		String uidAtttributeName = DEFAULT_UID_ATTRIBUTE;
-		if(properties.containsKey(UID_ATTRIBUTE)) uidAtttributeName = properties.getProperty(UID_ATTRIBUTE);
+		String uidAtttributeName = properties.getProperty(UID_ATTRIBUTE, DEFAULT_UID_ATTRIBUTE);
 		
 		// get the uid		
 		Attribute uidAttribute = attributes.get(uidAtttributeName);
 		if(uidAttribute != null) user.setId((String)uidAttribute.get());
 		
 		// get the display name attribute name
-		String displayAtttributeName = DEFAULT_DISPLAYNAME_ATTRIBUTE;
-		if(properties.containsKey(DISPLAYNAME_ATTRIBUTE)) displayAtttributeName = properties.getProperty(DISPLAYNAME_ATTRIBUTE);
+		String displayAtttributeName = properties.getProperty(DISPLAYNAME_ATTRIBUTE, DEFAULT_DISPLAYNAME_ATTRIBUTE);
 		
 		// get the display name
 		Attribute displayNameAttribute = attributes.get(displayAtttributeName);
@@ -94,16 +101,14 @@ public class UserAttributesMapper implements AttributesMapper
 		Name name = ResourceUtilities.FACTORY.createName();
 
 		// get the surname attribute name
-		String surnameAtttributeName = DEFAULT_FAMILYNAME_ATTRIBUTE;
-		if(properties.containsKey(FAMILYNAME_ATTRIBUTE)) surnameAtttributeName = properties.getProperty(FAMILYNAME_ATTRIBUTE);
+		String surnameAtttributeName = properties.getProperty(FAMILYNAME_ATTRIBUTE, DEFAULT_FAMILYNAME_ATTRIBUTE);
 		
 		// get the surname name
 		Attribute surnameAttribute = attributes.get(surnameAtttributeName); 
 		if(surnameAttribute != null) name.setFamilyName((String)surnameAttribute.get());
 		
 		// get the given name attribute name
-		String givenAtttributeName = DEFAULT_GIVENNAME_ATTRIBUTE;
-		if(properties.containsKey(GIVENNAME_ATTRIBUTE)) givenAtttributeName = properties.getProperty(GIVENNAME_ATTRIBUTE);
+		String givenAtttributeName = properties.getProperty(GIVENNAME_ATTRIBUTE, DEFAULT_GIVENNAME_ATTRIBUTE);
 		
 		// get the given name
 		Attribute givenAttribute = attributes.get(givenAtttributeName);
@@ -113,8 +118,7 @@ public class UserAttributesMapper implements AttributesMapper
 		user.setName(name);
 		
 		// get the email attribute name
-		String mailAtttributeName = DEFAULT_MAIL_ATTRIBUTE;
-		if(properties.containsKey(MAIL_ATTRIBUTE)) mailAtttributeName = properties.getProperty(MAIL_ATTRIBUTE);
+		String mailAtttributeName = properties.getProperty(MAIL_ATTRIBUTE, DEFAULT_MAIL_ATTRIBUTE);
 		
 		// get the mails
 		NamingEnumeration mailEnumeration = attributes.get(mailAtttributeName).getAll();
@@ -144,8 +148,7 @@ public class UserAttributesMapper implements AttributesMapper
 		}
 		
 		// get the telephone attribute name
-		String telephoneAtttributeName = DEFAULT_TELEPHONE_ATTRIBUTE;
-		if(properties.containsKey(TELEPHONE_ATTRIBUTE)) telephoneAtttributeName = properties.getProperty(TELEPHONE_ATTRIBUTE);
+		String telephoneAtttributeName = properties.getProperty(TELEPHONE_ATTRIBUTE, DEFAULT_TELEPHONE_ATTRIBUTE);
 		
 		// get the telephones
 		NamingEnumeration telephoneEnumeration = attributes.get(telephoneAtttributeName).getAll();
@@ -175,16 +178,14 @@ public class UserAttributesMapper implements AttributesMapper
 		}
 		
 		// get the password attribute name
-		String passwordAtttributeName = DEFAULT_PASSWORD_ATTRIBUTE;
-		if(properties.containsKey(PASSWORD_ATTRIBUTE)) passwordAtttributeName = properties.getProperty(PASSWORD_ATTRIBUTE);
+		String passwordAtttributeName = properties.getProperty(PASSWORD_ATTRIBUTE, DEFAULT_PASSWORD_ATTRIBUTE);
 		
 		// get the password
 		Attribute passwordAttribute = attributes.get(passwordAtttributeName);
 		if(passwordAttribute != null) user.setPassword(new String((byte[])passwordAttribute.get()));
 
 		// get the memberOf attribute name
-		String memberOfAtttributeName = DEFAULT_MEMBEROF_ATTRIBUTE;
-		if(properties.containsKey(MEMBEROF_ATTRIBUTE)) memberOfAtttributeName = properties.getProperty(MEMBEROF_ATTRIBUTE);
+		String memberOfAtttributeName = properties.getProperty(MEMBEROF_ATTRIBUTE, DEFAULT_MEMBEROF_ATTRIBUTE);
 		
 		// get the memberOf
 		NamingEnumeration memberOfEnumeration = attributes.get(memberOfAtttributeName).getAll();
@@ -200,7 +201,18 @@ public class UserAttributesMapper implements AttributesMapper
 				if(memberOfAttribute != null)
 				{				
 					PluralAttribute pluralAttribute = ResourceUtilities.FACTORY.createPluralAttribute();
-					pluralAttribute.setValue(memberOfAttribute);					
+					
+					// check if the member dns need to be concealed 
+					if(properties.getProperty(UserAttributesMapper.CONCEAL_ACCOUNT_DNS, UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS).equalsIgnoreCase(UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS))
+					{
+						Matcher matcher = pattern.matcher(memberOfAttribute);			
+						if(matcher.matches())
+						{
+							memberOfAttribute = matcher.group(1); 
+						}
+					}
+					
+					pluralAttribute.setValue(memberOfAttribute);				
 					memberof.getGroup().add(pluralAttribute);
 				}
 			}

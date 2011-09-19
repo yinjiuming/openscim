@@ -179,8 +179,7 @@ public class LdapGroupResource extends GroupResource
 				Attributes groupAttributes = new BasicAttributes();
 				
 				// get the objectclasses
-				String objectclasses = GroupAttributesMapper.DEFAULT_GROUP_OBJECTCLASS_ATTRIBUTE;
-				if(properties.containsKey(GroupAttributesMapper.GROUP_OBJECTCLASS_ATTRIBUTE)) objectclasses = properties.getProperty(GroupAttributesMapper.GROUP_OBJECTCLASS_ATTRIBUTE);
+				String objectclasses = properties.getProperty(GroupAttributesMapper.GROUP_OBJECTCLASS_ATTRIBUTE, GroupAttributesMapper.DEFAULT_GROUP_OBJECTCLASS_ATTRIBUTE);
 				
 				// set the objectclass of the group
 				Scanner scanner = new Scanner(objectclasses);				
@@ -309,8 +308,7 @@ public class LdapGroupResource extends GroupResource
 			    //}
 				
 			    // get the member attribute name
-				String memberAtttributeName = GroupAttributesMapper.DEFAULT_MEMBER_ATTRIBUTE;
-				if(properties.containsKey(GroupAttributesMapper.MEMBER_ATTRIBUTE)) memberAtttributeName = properties.getProperty(GroupAttributesMapper.MEMBER_ATTRIBUTE);
+				String memberAtttributeName = properties.getProperty(GroupAttributesMapper.MEMBER_ATTRIBUTE, GroupAttributesMapper.DEFAULT_MEMBER_ATTRIBUTE);
 			    
 				// set the members
 				if(group.getAny() instanceof List)
@@ -326,7 +324,7 @@ public class LdapGroupResource extends GroupResource
 							
 							// build the user dn
 							String userdn = uid;
-							if(properties.getProperty(UserAttributesMapper.CONCEAL_ACCOUNT_DNS, "true").equalsIgnoreCase("true"))
+							if(properties.getProperty(UserAttributesMapper.CONCEAL_ACCOUNT_DNS, UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS).equalsIgnoreCase(UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS))
 							{
 								// utilise ldap formated dn
 								userdn = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE, UserAttributesMapper.DEFAULT_UID_ATTRIBUTE) + "=" + 

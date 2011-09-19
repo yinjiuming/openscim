@@ -53,10 +53,15 @@ public class GroupAttributesMapper implements AttributesMapper
 	public static final String DEFAULT_CONCEAL_GROUP_DNS = "true";
 	
 	private Properties properties = null;
+	private String expression = null;
+	private Pattern pattern = null;
 	
 	public GroupAttributesMapper(Properties properties)
 	{
 		this.properties = properties;
+		expression = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE, UserAttributesMapper.DEFAULT_UID_ATTRIBUTE) + 
+		   "=([^,]*)," + properties.getProperty(UserAttributesMapper.ACCOUNT_BASEDN, UserAttributesMapper.DEFAULT_ACCOUNT_BASEDN);
+		pattern = Pattern.compile(expression);
 	}
 	
 	public Object mapFromAttributes(Attributes attributes) throws NamingException
@@ -65,16 +70,14 @@ public class GroupAttributesMapper implements AttributesMapper
 		Group group = ResourceUtilities.FACTORY.createGroup();
 		
 		// get the gid attribute name
-		String gidAtttributeName = DEFAULT_GID_ATTRIBUTE;
-		if(properties.containsKey(GID_ATTRIBUTE)) gidAtttributeName = properties.getProperty(GID_ATTRIBUTE);
+		String gidAtttributeName = properties.getProperty(GID_ATTRIBUTE, DEFAULT_GID_ATTRIBUTE);
 		
 		// get the gid		
 		Attribute gidAttribute = attributes.get(gidAtttributeName);
 		if(gidAttribute != null) group.setId((String)gidAttribute.get());
 		
 		// get the member attribute name
-		String memberAtttributeName = DEFAULT_MEMBER_ATTRIBUTE;
-		if(properties.containsKey(MEMBER_ATTRIBUTE)) memberAtttributeName = properties.getProperty(MEMBER_ATTRIBUTE);						
+		String memberAtttributeName = properties.getProperty(MEMBER_ATTRIBUTE, DEFAULT_MEMBER_ATTRIBUTE); 					
 		
 		// get the members
 		NamingEnumeration memberEnumeration = attributes.get(memberAtttributeName).getAll();
@@ -94,9 +97,6 @@ public class GroupAttributesMapper implements AttributesMapper
 					// check if the member dns need to be concealed 
 					if(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS))
 					{
-						String expression = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE, UserAttributesMapper.DEFAULT_UID_ATTRIBUTE) + 
-						   "=([^,]*)," + properties.getProperty(UserAttributesMapper.ACCOUNT_BASEDN, UserAttributesMapper.DEFAULT_ACCOUNT_BASEDN);
-						Pattern pattern = Pattern.compile(expression);
 						Matcher matcher = pattern.matcher(memberAttribute);			
 						if(matcher.matches())
 						{

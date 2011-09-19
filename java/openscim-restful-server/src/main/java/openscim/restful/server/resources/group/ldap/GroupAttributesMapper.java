@@ -21,6 +21,8 @@ package openscim.restful.server.resources.group.ldap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
@@ -29,22 +31,26 @@ import javax.naming.directory.Attributes;
 
 import openscim.entities.Group;
 import openscim.entities.PluralAttribute;
+import openscim.restful.server.resources.user.ldap.UserAttributesMapper;
 import openscim.restful.server.resources.util.ResourceUtilities;
 
 import org.springframework.ldap.core.AttributesMapper;
 
 public class GroupAttributesMapper implements AttributesMapper
 {
-	public static final String ATTRIBUTE_PREFIX = "attributes.groups.";
+	public static final String LDAP_PREFIX = "ldap.";
+	public static final String ATTRIBUTE_PREFIX = LDAP_PREFIX + "attributes.groups.";
 	public static final String GROUP_OBJECTCLASS_ATTRIBUTE = ATTRIBUTE_PREFIX + "objectclass";
 	public static final String GID_ATTRIBUTE = ATTRIBUTE_PREFIX + "cn";
 	public static final String MEMBER_ATTRIBUTE = ATTRIBUTE_PREFIX + "member";	
 	public static final String DEFAULT_GROUP_OBJECTCLASS_ATTRIBUTE = "groupOfNames";
 	public static final String DEFAULT_GID_ATTRIBUTE = "cn";
 	public static final String DEFAULT_MEMBER_ATTRIBUTE = "member";	
-	public static final String GROUP_PREFIX = "group.";
+	public static final String GROUP_PREFIX = "ldap.group.";
 	public static final String GROUP_BASEDN = GROUP_PREFIX + "basedn";
 	public static final String DEFAULT_GROUP_BASEDN = "ou=groups,dc=openscim";
+	public static final String CONCEAL_GROUP_DNS = LDAP_PREFIX + "concealdns";
+	public static final String DEFAULT_CONCEAL_GROUP_DNS = "true";
 	
 	private Properties properties = null;
 	
@@ -81,11 +87,24 @@ public class GroupAttributesMapper implements AttributesMapper
 			{
 				// get the next member
 				String memberAttribute = (String)memberEnumeration.next();
-				if(memberEnumeration != null)
+				if(memberAttribute != null)
 				{				
 					PluralAttribute pluralAttribute = ResourceUtilities.FACTORY.createPluralAttribute();
-					pluralAttribute.setValue(memberAttribute);
 					
+					// check if the member dns need to be concealed 
+					if(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS))
+					{
+						String expression = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE, UserAttributesMapper.DEFAULT_UID_ATTRIBUTE) + 
+						   "=([^,]*)," + properties.getProperty(UserAttributesMapper.ACCOUNT_BASEDN, UserAttributesMapper.DEFAULT_ACCOUNT_BASEDN);
+						Pattern pattern = Pattern.compile(expression);
+						Matcher matcher = pattern.matcher(memberAttribute);			
+						if(matcher.matches())
+						{
+							memberAttribute = matcher.group(1); 
+						}
+					}
+					
+					pluralAttribute.setValue(memberAttribute);					
 					members.add(pluralAttribute);
 				}
 			}

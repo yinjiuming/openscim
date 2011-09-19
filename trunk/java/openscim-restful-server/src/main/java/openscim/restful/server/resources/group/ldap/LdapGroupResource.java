@@ -37,6 +37,7 @@ import javax.ws.rs.core.UriInfo;
 import openscim.entities.Group;
 import openscim.entities.PluralAttribute;
 import openscim.restful.server.resources.group.GroupResource;
+import openscim.restful.server.resources.user.ldap.UserAttributesMapper;
 import openscim.restful.server.resources.util.ResourceUtilities;
 
 import org.apache.log4j.Logger;
@@ -77,23 +78,32 @@ public class LdapGroupResource extends GroupResource
 		// check the ldap template has been setup correctly
 		if(ldapTemplate != null)
 		{
+			// create the mapper if it doesn't already exists
+			if(mapper == null) mapper = new GroupAttributesMapper(properties);
+			
+			// build the group dn
+			String dn = gid;
+			if(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS))
+			{
+				// utilise ldap formated dn
+				dn = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE, GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE) + "=" + 
+				     gid + "," + properties.getProperty(GroupAttributesMapper.GROUP_BASEDN, GroupAttributesMapper.DEFAULT_GROUP_BASEDN);
+			}
+			
 			try
 			{
-				// create the mapper if it doesn't already exists
-				if(mapper == null) mapper = new GroupAttributesMapper(properties);
-				
 				// retrieve the group
-				Group group = (Group)ldapTemplate.lookup(gid, mapper);				
+				Group group = (Group)ldapTemplate.lookup(dn, mapper);			
 				
 				// check if the group was found
 				if(group == null)
 				{
 					// group not found, return an error message
-			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + gid + " not found");
+			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
 				}
 				
 				// determine the url of the new resource
-				URI location = new URI("/Group/" + group.getId());
+				URI location = new URI("/Group/" + dn);
 				
 				// user stored successfully, return the group				
 				return Response.ok(group).location(location).build();
@@ -108,11 +118,11 @@ public class LdapGroupResource extends GroupResource
 			}
 			catch(Exception nException)
 			{
-				logger.debug("Resource " + gid + " not found");
+				logger.debug("Resource " + dn + " not found");
 				logger.debug(nException);
 				
 				// group not found, return an error message
-		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + gid + " not found");
+		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
 			}
 		}
 		else
@@ -135,29 +145,30 @@ public class LdapGroupResource extends GroupResource
 		// check the ldap template has been setup correctly
 		if(ldapTemplate != null)
 		{
-			try
+			// create the mapper if it doesn't already exists
+			if(mapper == null) mapper = new GroupAttributesMapper(properties);
+			
+			// build the group dn
+			String dn = group.getId();
+			if(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS))
 			{
-				// get the basedn
-				String basedn = GroupAttributesMapper.DEFAULT_GROUP_BASEDN;
-				if(properties.containsKey(GroupAttributesMapper.GROUP_BASEDN)) basedn = properties.getProperty(GroupAttributesMapper.GROUP_BASEDN);
-				
-				// get the gid attribute name
-				String gidAtttributeName = GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE;
-				if(properties.containsKey(GroupAttributesMapper.GID_ATTRIBUTE)) gidAtttributeName = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE);
-				
+				// utilise ldap formated dn
+				dn = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE, GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE) + "=" + 
+				     group.getId() + "," + properties.getProperty(GroupAttributesMapper.GROUP_BASEDN, GroupAttributesMapper.DEFAULT_GROUP_BASEDN);
+			}
+			
+			try
+			{				
 				try
 				{
-					// create the mapper if it doesn't already exists
-					if(mapper == null) mapper = new GroupAttributesMapper(properties);
-					
 					// retrieve the group
-					Group lookedGroup = (Group)ldapTemplate.lookup(gidAtttributeName + "=" + group.getId() + "," + basedn, mapper);				
+					Group lookedGroup = (Group)ldapTemplate.lookup(dn, mapper);				
 					
 					// check if the group was found
 					if(lookedGroup != null)
 					{
 						// user already exists				
-						return ResourceUtilities.buildErrorResponse(HttpStatus.CONFLICT, HttpStatus.CONFLICT.getMessage() + ": Resource " + group.getId() + " already exists");
+						return ResourceUtilities.buildErrorResponse(HttpStatus.CONFLICT, HttpStatus.CONFLICT.getMessage() + ": Resource " + dn + " already exists");
 					}
 				}
 				catch(Exception nException)
@@ -180,11 +191,11 @@ public class LdapGroupResource extends GroupResource
 				}
 				
 				// set the gid
+				String gidAtttributeName = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE, GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE);
 				groupAttributes.put(gidAtttributeName, group.getId());								
 				
 				// get the member attribute name
-				String memberAtttributeName = GroupAttributesMapper.DEFAULT_MEMBER_ATTRIBUTE;
-				if(properties.containsKey(GroupAttributesMapper.MEMBER_ATTRIBUTE)) memberAtttributeName = properties.getProperty(GroupAttributesMapper.MEMBER_ATTRIBUTE);
+				String memberAtttributeName = properties.getProperty(GroupAttributesMapper.MEMBER_ATTRIBUTE, GroupAttributesMapper.DEFAULT_MEMBER_ATTRIBUTE); 
 				
 				// set the members
 				Attribute memberAttribute = new BasicAttribute(memberAtttributeName);
@@ -196,17 +207,28 @@ public class LdapGroupResource extends GroupResource
 						if(object instanceof PluralAttribute)
 						{
 							PluralAttribute member = (PluralAttribute)object;
-							memberAttribute.add(member.getValue());
+							String uid = member.getValue();
+							
+							// build the user dn
+							String userdn = uid;
+							if(properties.getProperty(UserAttributesMapper.CONCEAL_ACCOUNT_DNS, "true").equalsIgnoreCase("true"))
+							{
+								// utilise ldap formated dn
+								userdn = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE, UserAttributesMapper.DEFAULT_UID_ATTRIBUTE) + "=" + 
+								     uid + "," + properties.getProperty(UserAttributesMapper.ACCOUNT_BASEDN, UserAttributesMapper.DEFAULT_ACCOUNT_BASEDN);
+							}
+							
+							memberAttribute.add(userdn);
 						}
 					}
 				}
 				groupAttributes.put(memberAttribute);
 				
 			    // create the group
-			    ldapTemplate.bind(gidAtttributeName + "=" + group.getId() + "," + basedn, null, groupAttributes);
+			    ldapTemplate.bind(dn, null, groupAttributes);
 				
 				// determine the url of the new resource
-				URI location = new URI("/Group/" + gidAtttributeName + "=" + group.getId() + "," + basedn);
+				URI location = new URI("/Group/" + dn);
 				
 				// group stored successfully, return the group				
 				return Response.created(location).entity(group).build();
@@ -248,34 +270,43 @@ public class LdapGroupResource extends GroupResource
 		// check the ldap template has been setup correctly
 		if(ldapTemplate != null)
 		{
-			try
+			// create the mapper if it doesn't already exists
+			if(mapper == null) mapper = new GroupAttributesMapper(properties);
+			
+			// build the group dn
+			String dn = gid;
+			if(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS))
 			{
-				// create the mapper if it doesn't already exists
-				if(mapper == null) mapper = new GroupAttributesMapper(properties);
-				
+				// utilise ldap formated dn
+				dn = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE, GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE) + "=" + 
+				     gid + "," + properties.getProperty(GroupAttributesMapper.GROUP_BASEDN, GroupAttributesMapper.DEFAULT_GROUP_BASEDN);
+			}
+			
+			try
+			{				
 				// retrieve the group
-				Group lookedupGroup = (Group)ldapTemplate.lookup(gid, mapper);				
+				Group lookedupGroup = (Group)ldapTemplate.lookup(dn, mapper);				
 				
 				// check if the group was found
 				if(lookedupGroup == null)
 				{
 					// user not found, return an error message
-			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + gid + " not found");
+			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
 				}
 				
 				List<ModificationItem> items = new ArrayList<ModificationItem>();
 				
 				// build a gid modification
-			    if(group.getId() != null)
-			    {
-			    	// get the gid attribute name
-					String gidAtttributeName = GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE;
-					if(properties.containsKey(GroupAttributesMapper.GID_ATTRIBUTE)) gidAtttributeName = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE);
-			    	
-			    	Attribute uidAttribute = new BasicAttribute(gidAtttributeName, group.getId());				
-					ModificationItem uidItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, uidAttribute);
-					items.add(uidItem);
-			    }
+			    //if(group.getId() != null)
+			    //{
+			    //	// get the gid attribute name
+				//	String gidAtttributeName = GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE;
+				//	if(properties.containsKey(GroupAttributesMapper.GID_ATTRIBUTE)) gidAtttributeName = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE);
+			    //	
+			    //	Attribute uidAttribute = new BasicAttribute(gidAtttributeName, group.getId());				
+				//	ModificationItem uidItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, uidAttribute);
+				//	items.add(uidItem);
+			    //}
 				
 			    // get the member attribute name
 				String memberAtttributeName = GroupAttributesMapper.DEFAULT_MEMBER_ATTRIBUTE;
@@ -291,7 +322,18 @@ public class LdapGroupResource extends GroupResource
 						if(object instanceof PluralAttribute)
 						{
 							PluralAttribute member = (PluralAttribute)object;
-							memberAttribute.add(member.getValue());
+							String uid = member.getValue();
+							
+							// build the user dn
+							String userdn = uid;
+							if(properties.getProperty(UserAttributesMapper.CONCEAL_ACCOUNT_DNS, "true").equalsIgnoreCase("true"))
+							{
+								// utilise ldap formated dn
+								userdn = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE, UserAttributesMapper.DEFAULT_UID_ATTRIBUTE) + "=" + 
+								     uid + "," + properties.getProperty(UserAttributesMapper.ACCOUNT_BASEDN, UserAttributesMapper.DEFAULT_ACCOUNT_BASEDN);
+							}
+							
+							memberAttribute.add(userdn);
 						}
 					}
 					ModificationItem memberItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, memberAttribute);
@@ -300,18 +342,18 @@ public class LdapGroupResource extends GroupResource
 				
 				// update the user password
 				ModificationItem[] itemsArray = items.toArray(new ModificationItem[items.size()]);
-				ldapTemplate.modifyAttributes(gid, itemsArray);
+				ldapTemplate.modifyAttributes(dn, itemsArray);
 			    
 				// password changed successfully
 			    return Response.status(HttpStatus.NO_CONTENT.getCode()).build();				
 			}
 			catch(Exception nException)
 			{
-				logger.debug("Resource " + gid + " not found");
+				logger.debug("Resource " + dn + " not found");
 				logger.debug(nException);
 				
 				// group not found, return an error message
-		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + gid + " not found");
+		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
 			}
 		}
 		else
@@ -334,34 +376,43 @@ public class LdapGroupResource extends GroupResource
 		// check the ldap template has been setup correctly
 		if(ldapTemplate != null)
 		{
-			try
+			// create the mapper if it doesn't already exists
+			if(mapper == null) mapper = new GroupAttributesMapper(properties);
+			
+			// build the group dn
+			String dn = gid;
+			if(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS))
 			{
-				// create the mapper if it doesn't already exists
-				if(mapper == null) mapper = new GroupAttributesMapper(properties);
-				
+				// utilise ldap formated dn
+				dn = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE, GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE) + "=" + 
+				     gid + "," + properties.getProperty(GroupAttributesMapper.GROUP_BASEDN, GroupAttributesMapper.DEFAULT_GROUP_BASEDN);
+			}
+			
+			try
+			{				
 				// retrieve the group
-				Group group = (Group)ldapTemplate.lookup(gid, mapper);				
+				Group group = (Group)ldapTemplate.lookup(dn, mapper);				
 				
 				// check if the group was found
 				if(group == null)
 				{
 					// group not found, return an error message
-			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + gid + " not found");
+			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
 				}
 				
 				// remove the retrieved group
-				ldapTemplate.unbind(gid, true);
+				ldapTemplate.unbind(dn, true);
 		    	
 		    	// group removed successfully
 		    	return Response.ok().build();
 			}
 			catch(Exception nException)
 			{
-				logger.debug("Resource " + gid + " not found");
+				logger.debug("Resource " + dn + " not found");
 				logger.debug(nException);
 				
 				// group not found, return an error message
-		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + gid + " not found");
+		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
 			}
 		}
 		else

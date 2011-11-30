@@ -101,8 +101,10 @@ public class LdapUserResource extends UserResource
 				// check if the user was found
 				if(user == null)
 				{
+					logger.debug("Resource " + dn + " not found");
+					
 					// user not found, return an error message
-			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
+			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
 				}
 				
 				// determine the url of the new resource
@@ -111,6 +113,13 @@ public class LdapUserResource extends UserResource
 			    {
 			    	location = new URI("/User/" + user.getId());
 			    }
+			    
+			    // set the internal id to the dn
+				user.setId(dn);
+				if(properties.getProperty(UserAttributesMapper.CONCEAL_ACCOUNT_DNS, UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS).equalsIgnoreCase(UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS))
+				{
+					user.setId(user.getId());
+				}
 				
 				// user stored successfully, return the user				
 				return Response.ok(user).location(location).build();
@@ -119,6 +128,7 @@ public class LdapUserResource extends UserResource
 			{
 				// problem generating entity location
 				logger.error("problem generating entity location");
+				usException.printStackTrace(System.out);
 				
 				// return a server error
 				return ResourceUtilities.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.NOT_IMPLEMENTED.getMessage() + ": Service Provider problem generating entity location");
@@ -126,10 +136,10 @@ public class LdapUserResource extends UserResource
 			catch(Exception nException)
 			{
 				logger.debug("Resource " + dn + " not found");
-				logger.debug(nException);
+				nException.printStackTrace(System.out);
 				
 				// user not found, return an error message
-		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
+		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
 			}
 		}
 		else
@@ -178,7 +188,7 @@ public class LdapUserResource extends UserResource
 					if(lookedUser != null)
 					{
 						// user already exists				
-						return ResourceUtilities.buildErrorResponse(HttpStatus.CONFLICT, HttpStatus.CONFLICT.getMessage() + ": Resource " + dn + " already exists");
+						return ResourceUtilities.buildErrorResponse(HttpStatus.CONFLICT, HttpStatus.CONFLICT.getMessage() + ": Resource " + user.getId() + " already exists");
 					}
 				}
 				catch(Exception nException)
@@ -192,12 +202,22 @@ public class LdapUserResource extends UserResource
 				String objectclasses = properties.getProperty(UserAttributesMapper.ACCOUNT_OBJECTCLASS_ATTRIBUTE, UserAttributesMapper.DEFAULT_ACCOUNT_OBJECTCLASS_ATTRIBUTE);
 				
 				// set the objectclass of the user
+				/*
+				Attribute objectclassAttribute = new BasicAttribute("objectclass");
 				Scanner scanner = new Scanner(objectclasses);				
 				scanner.useDelimiter(",");
 				while(scanner.hasNext())
 				{
-					userAttributes.put("objectclass", scanner.next());
-				}								
+					objectclassAttribute.add(scanner.next());
+				}
+				*/
+				
+				BasicAttribute objectclassAttribute = new BasicAttribute("objectclass");
+				objectclassAttribute.add("inetOrgPerson");
+				objectclassAttribute.add("organizationalPerson");
+				objectclassAttribute.add("person");
+				objectclassAttribute.add("top");
+				userAttributes.put(objectclassAttribute);
 				
 				// get the uid attribute name
 				String uidAtttributeName = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE, UserAttributesMapper.DEFAULT_UID_ATTRIBUTE);
@@ -268,7 +288,14 @@ public class LdapUserResource extends UserResource
 			    if(properties.getProperty(UserAttributesMapper.CONCEAL_ACCOUNT_DNS, UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS).equalsIgnoreCase(UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS))
 			    {
 			    	location = new URI("/User/" + user.getId());
-			    }				
+			    }
+			    
+				// set the internal id to the dn
+				user.setId(dn);
+				if(properties.getProperty(UserAttributesMapper.CONCEAL_ACCOUNT_DNS, UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS).equalsIgnoreCase(UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS))
+			    {
+					user.setId(user.getId());
+			    }
 				
 				// user stored successfully, return the user				
 				return Response.created(location).entity(user).build();
@@ -277,6 +304,7 @@ public class LdapUserResource extends UserResource
 			{
 				// problem generating entity location
 				logger.error("problem generating entity location");
+				usException.printStackTrace(System.out);
 				
 				// return a server error
 				return ResourceUtilities.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.NOT_IMPLEMENTED.getMessage() + ": Service Provider problem generating entity location");
@@ -285,6 +313,7 @@ public class LdapUserResource extends UserResource
 			{
 				// problem creating user
 				logger.error("problem creating user");
+				nException.printStackTrace(System.out);
 				
 				// return a server error
 				return ResourceUtilities.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.NOT_IMPLEMENTED.getMessage() + ": Service Provider problem creating user");
@@ -330,22 +359,24 @@ public class LdapUserResource extends UserResource
 				// check if the user was found
 				if(lookedupUser == null)
 				{
+					logger.debug("Resource " + dn + " not found");
+					
 					// user not found, return an error message
-			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
+			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
 				}
 				
 				List<ModificationItem> items = new ArrayList<ModificationItem>();
 				
 				// get the uid attribute name
-				String uidAtttributeName = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE, UserAttributesMapper.DEFAULT_UID_ATTRIBUTE);
+				//String uidAtttributeName = properties.getProperty(UserAttributesMapper.UID_ATTRIBUTE, UserAttributesMapper.DEFAULT_UID_ATTRIBUTE);
 				
 				// build a uid modification
-			    if(user.getId() != null)
-			    {
-			    	Attribute uidAttribute = new BasicAttribute(uidAtttributeName, user.getId());				
-					ModificationItem uidItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, uidAttribute);
-					items.add(uidItem);
-			    }
+			    //if(user.getId() != null)
+			    //{
+			    //	Attribute uidAttribute = new BasicAttribute(uidAtttributeName, user.getId());				
+				//	ModificationItem uidItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, uidAttribute);
+				//	items.add(uidItem);
+			    //}
 				
 			    // get the display name attribute name
 				String displayAtttributeName = properties.getProperty(UserAttributesMapper.DISPLAYNAME_ATTRIBUTE, UserAttributesMapper.DEFAULT_DISPLAYNAME_ATTRIBUTE);
@@ -438,7 +469,7 @@ public class LdapUserResource extends UserResource
 				logger.debug(nException);
 				
 				// user not found, return an error message
-		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
+		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
 			}
 		}
 		else
@@ -481,8 +512,10 @@ public class LdapUserResource extends UserResource
 				// check if the user was found
 				if(user == null)
 				{
+					logger.debug("Resource " + dn + " not found");
+					
 					// user not found, return an error message
-			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
+			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
 				}
 				
 				// remove the retrieved user
@@ -494,10 +527,11 @@ public class LdapUserResource extends UserResource
 			catch(Exception nException)
 			{
 				logger.debug("Resource " + dn + " not found");
-				logger.debug(nException);
+				//logger.debug(nException);
+				nException.printStackTrace(System.out);
 				
 				// user not found, return an error message
-		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
+		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
 			}
 		}
 		else
@@ -540,8 +574,10 @@ public class LdapUserResource extends UserResource
 				// check if the user was found
 				if(lookedUser == null)
 				{
+					logger.debug("Resource " + dn + " not found");
+					
 					// user not found, return an error message
-			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
+			    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
 				}
 				
 				// build a password modification			
@@ -549,7 +585,7 @@ public class LdapUserResource extends UserResource
 				ModificationItem passwordItem = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, passwordAttribute);
 			    
 				// update the user password
-				ldapTemplate.modifyAttributes(uid, new ModificationItem[]{passwordItem});
+				ldapTemplate.modifyAttributes(dn, new ModificationItem[]{passwordItem});
 			    
 				// password changed successfully
 			    return Response.status(HttpStatus.NO_CONTENT.getCode()).build();				
@@ -557,10 +593,11 @@ public class LdapUserResource extends UserResource
 			catch(Exception nException)
 			{
 				logger.debug("Resource " + dn + " not found");
-				logger.debug(nException);
+				nException.printStackTrace(System.out);
+				//logger.debug(nException);
 				
 				// user not found, return an error message
-		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + dn + " not found");
+		    	return ResourceUtilities.buildErrorResponse(HttpStatus.NOT_FOUND, "Resource " + uid + " not found");
 			}
 		}
 		else

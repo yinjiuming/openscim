@@ -52,7 +52,7 @@ public class UserAttributesMapper implements AttributesMapper
 	public static final String PASSWORD_ATTRIBUTE = ATTRIBUTE_PREFIX + "password";
 	public static final String MEMBEROF_ATTRIBUTE = ATTRIBUTE_PREFIX + "memberOf";
 	public static final String DEFAULT_ACCOUNT_OBJECTCLASS_ATTRIBUTE = "inetOrgPerson, organizationalPerson, person, top";
-	public static final String DEFAULT_UID_ATTRIBUTE = "uid";
+	public static final String DEFAULT_UID_ATTRIBUTE = "cn";
 	public static final String DEFAULT_DISPLAYNAME_ATTRIBUTE = "cn";
 	public static final String DEFAULT_FAMILYNAME_ATTRIBUTE = "sn";
 	public static final String DEFAULT_GIVENNAME_ATTRIBUTE = "givenName";
@@ -86,9 +86,9 @@ public class UserAttributesMapper implements AttributesMapper
 		// get the uid attribute name
 		String uidAtttributeName = properties.getProperty(UID_ATTRIBUTE, DEFAULT_UID_ATTRIBUTE);
 		
-		// get the uid		
-		Attribute uidAttribute = attributes.get(uidAtttributeName);
-		if(uidAttribute != null) user.setId((String)uidAttribute.get());
+		// get the uid
+		//Attribute uidAttribute = attributes.get(uidAtttributeName);
+		//if(uidAttribute != null) user.setId((String)uidAttribute.get());
 		
 		// get the display name attribute name
 		String displayAtttributeName = properties.getProperty(DISPLAYNAME_ATTRIBUTE, DEFAULT_DISPLAYNAME_ATTRIBUTE);
@@ -121,60 +121,66 @@ public class UserAttributesMapper implements AttributesMapper
 		String mailAtttributeName = properties.getProperty(MAIL_ATTRIBUTE, DEFAULT_MAIL_ATTRIBUTE);
 		
 		// get the mails
-		NamingEnumeration mailEnumeration = attributes.get(mailAtttributeName).getAll();
-		if(mailEnumeration != null)
+		if(attributes.get(mailAtttributeName) != null)
 		{
-			// create a emails resource
-			Emails emails = ResourceUtilities.FACTORY.createUserEmails();
-
-			while(mailEnumeration.hasMoreElements())
+			NamingEnumeration mailEnumeration = attributes.get(mailAtttributeName).getAll();
+			if(mailEnumeration != null)
 			{
-				// get the next email
-				String mailAttribute = (String)mailEnumeration.next();
-				if(mailAttribute != null)
-				{				
-					PluralAttribute pluralAttribute = ResourceUtilities.FACTORY.createPluralAttribute();
-					pluralAttribute.setValue(mailAttribute);
-					
-					if(emails.getEmail().isEmpty()) pluralAttribute.setPrimary(true);
-					else pluralAttribute.setPrimary(false);
-					
-					emails.getEmail().add(pluralAttribute);
+				// create a emails resource
+				Emails emails = ResourceUtilities.FACTORY.createUserEmails();
+	
+				while(mailEnumeration.hasMoreElements())
+				{
+					// get the next email
+					String mailAttribute = (String)mailEnumeration.next();
+					if(mailAttribute != null)
+					{				
+						PluralAttribute pluralAttribute = ResourceUtilities.FACTORY.createPluralAttribute();
+						pluralAttribute.setValue(mailAttribute);
+						
+						if(emails.getEmail().isEmpty()) pluralAttribute.setPrimary(true);
+						else pluralAttribute.setPrimary(false);
+						
+						emails.getEmail().add(pluralAttribute);
+					}
 				}
+				
+				// add the mails to the user resource
+				user.setEmails(emails);
 			}
-			
-			// add the mails to the user resource
-			user.setEmails(emails);
 		}
 		
 		// get the telephone attribute name
 		String telephoneAtttributeName = properties.getProperty(TELEPHONE_ATTRIBUTE, DEFAULT_TELEPHONE_ATTRIBUTE);
 		
 		// get the telephones
-		NamingEnumeration telephoneEnumeration = attributes.get(telephoneAtttributeName).getAll();
-		if(telephoneEnumeration != null)
+		if(attributes.get(telephoneAtttributeName) != null)
 		{
-			// create a telephones resource
-			PhoneNumbers telephones = ResourceUtilities.FACTORY.createUserPhoneNumbers();
-
-			while(telephoneEnumeration.hasMoreElements())
+			NamingEnumeration telephoneEnumeration = attributes.get(telephoneAtttributeName).getAll();
+			if(telephoneEnumeration != null)
 			{
-				// get the next telephone
-				String telephoneAttribute = (String)telephoneEnumeration.next();
-				if(telephoneAttribute != null)
-				{				
-					PluralAttribute pluralAttribute = ResourceUtilities.FACTORY.createPluralAttribute();
-					pluralAttribute.setValue(telephoneAttribute);
-					
-					if(telephones.getPhoneNumber().isEmpty()) pluralAttribute.setPrimary(true);
-					else pluralAttribute.setPrimary(false);
-					
-					telephones.getPhoneNumber().add(pluralAttribute);
+				// create a telephones resource
+				PhoneNumbers telephones = ResourceUtilities.FACTORY.createUserPhoneNumbers();
+	
+				while(telephoneEnumeration.hasMoreElements())
+				{
+					// get the next telephone
+					String telephoneAttribute = (String)telephoneEnumeration.next();
+					if(telephoneAttribute != null)
+					{				
+						PluralAttribute pluralAttribute = ResourceUtilities.FACTORY.createPluralAttribute();
+						pluralAttribute.setValue(telephoneAttribute);
+						
+						if(telephones.getPhoneNumber().isEmpty()) pluralAttribute.setPrimary(true);
+						else pluralAttribute.setPrimary(false);
+						
+						telephones.getPhoneNumber().add(pluralAttribute);
+					}
 				}
+				
+				// add the telephones to the user resource
+				user.setPhoneNumbers(telephones);
 			}
-			
-			// add the telephones to the user resource
-			user.setPhoneNumbers(telephones);
 		}
 		
 		// get the password attribute name
@@ -188,38 +194,41 @@ public class UserAttributesMapper implements AttributesMapper
 		String memberOfAtttributeName = properties.getProperty(MEMBEROF_ATTRIBUTE, DEFAULT_MEMBEROF_ATTRIBUTE);
 		
 		// get the memberOf
-		NamingEnumeration memberOfEnumeration = attributes.get(memberOfAtttributeName).getAll();
-		if(memberOfEnumeration != null)
+		if(attributes.get(memberOfAtttributeName) != null)
 		{
-			// create a memberof resource
-			MemberOf memberof = ResourceUtilities.FACTORY.createUserMemberOf();
-			
-			while(memberOfEnumeration.hasMoreElements())
+			NamingEnumeration memberOfEnumeration = attributes.get(memberOfAtttributeName).getAll();
+			if(memberOfEnumeration != null)
 			{
-				// get the next member
-				String memberOfAttribute = (String)memberOfEnumeration.next();
-				if(memberOfAttribute != null)
-				{				
-					PluralAttribute pluralAttribute = ResourceUtilities.FACTORY.createPluralAttribute();
-					
-					// check if the member dns need to be concealed 
-					if(properties.getProperty(UserAttributesMapper.CONCEAL_ACCOUNT_DNS, UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS).equalsIgnoreCase(UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS))
-					{
-						Matcher matcher = pattern.matcher(memberOfAttribute);			
-						if(matcher.matches())
+				// create a memberof resource
+				MemberOf memberof = ResourceUtilities.FACTORY.createUserMemberOf();
+				
+				while(memberOfEnumeration.hasMoreElements())
+				{
+					// get the next member
+					String memberOfAttribute = (String)memberOfEnumeration.next();
+					if(memberOfAttribute != null)
+					{				
+						PluralAttribute pluralAttribute = ResourceUtilities.FACTORY.createPluralAttribute();
+						
+						// check if the member dns need to be concealed 
+						if(properties.getProperty(UserAttributesMapper.CONCEAL_ACCOUNT_DNS, UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS).equalsIgnoreCase(UserAttributesMapper.DEFAULT_CONCEAL_ACCOUNT_DNS))
 						{
-							memberOfAttribute = matcher.group(1); 
+							Matcher matcher = pattern.matcher(memberOfAttribute);			
+							if(matcher.matches())
+							{
+								memberOfAttribute = matcher.group(1); 
+							}
 						}
+						
+						pluralAttribute.setValue(memberOfAttribute);				
+						memberof.getGroup().add(pluralAttribute);
 					}
-					
-					pluralAttribute.setValue(memberOfAttribute);				
-					memberof.getGroup().add(pluralAttribute);
 				}
+				
+				// add the memberOf to the user resource
+				user.setMemberOf(memberof);
 			}
-			
-			// add the memberOf to the user resource
-			user.setMemberOf(memberof);
-		}				
+		}
 		
 		return user;
      }

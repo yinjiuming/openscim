@@ -31,17 +31,17 @@
 		<property name="instances">
 			<set>
 			    <!-- ehCache based scim implementation  -->
-				<ref local="resource.scim.user.ehcache" />
+				<!--<ref local="resource.scim.user.ehcache" />-->
 				<ref local="resource.scim.users.ehcache" />
-				<ref local="resource.scim.group.ehcache" />
+				<!--<ref local="resource.scim.group.ehcache" />-->
 				<ref local="resource.scim.groups.ehcache" />
 				<ref local="resource.scim.schema.ehcache" />
 				<ref local="resource.scim.schemas.ehcache" />
 				
 				<!-- ldap based scim implementation -->				
-				<!--<ref local="resource.scim.user.ldap" />-->
+				<ref local="resource.scim.user.ldap" />
 				<!--<ref local="resource.scim.users.ldap" />-->
-				<!--<ref local="resource.scim.group.ldap" />-->
+				<ref local="resource.scim.group.ldap" />
 				<!--<ref local="resource.scim.groups.ldap" />-->
 				<!--<ref local="resource.scim.schema.ldap" />-->
 				<!--<ref local="resource.scim.schemas.ldap" />-->				
@@ -71,7 +71,7 @@
 
 	<bean id="ldapContextSource" class="org.springframework.ldap.core.support.LdapContextSource">
         <property name="url" value="ldap://ldap.openscim:389" />
-        <!-- <property name="base" value="dc=openscim" />-->
+        <!--<property name="base" value="dc=openscim" />-->
         <property name="userDn" value="cn=Manager,dc=openscim" />
         <property name="password" value="openscim" />
     </bean>

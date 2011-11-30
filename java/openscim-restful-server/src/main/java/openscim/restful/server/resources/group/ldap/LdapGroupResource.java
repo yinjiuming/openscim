@@ -81,6 +81,11 @@ public class LdapGroupResource extends GroupResource
 			// create the mapper if it doesn't already exists
 			if(mapper == null) mapper = new GroupAttributesMapper(properties);
 			
+			logger.debug("GroupAttributesMapper.CONCEAL_GROUP_DNS = " + GroupAttributesMapper.CONCEAL_GROUP_DNS);
+			logger.debug("GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS = " + GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS);
+			logger.debug("properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS) = " + properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS));
+			logger.debug(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS));
+			
 			// build the group dn
 			String dn = gid;
 			if(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS))
@@ -88,12 +93,16 @@ public class LdapGroupResource extends GroupResource
 				// utilise ldap formated dn
 				dn = properties.getProperty(GroupAttributesMapper.GID_ATTRIBUTE, GroupAttributesMapper.DEFAULT_GID_ATTRIBUTE) + "=" + 
 				     gid + "," + properties.getProperty(GroupAttributesMapper.GROUP_BASEDN, GroupAttributesMapper.DEFAULT_GROUP_BASEDN);
+				
+				logger.debug("dn = " + dn);
 			}
 			
 			try
 			{
 				// retrieve the group
 				Group group = (Group)ldapTemplate.lookup(dn, mapper);			
+				
+				logger.debug("group = " + group);
 				
 				// check if the group was found
 				if(group == null)
@@ -106,9 +115,11 @@ public class LdapGroupResource extends GroupResource
 				URI location = new URI("/Group/" + dn);
 			    if(properties.getProperty(GroupAttributesMapper.CONCEAL_GROUP_DNS, GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS).equalsIgnoreCase(GroupAttributesMapper.DEFAULT_CONCEAL_GROUP_DNS))
 			    {
-			    	location = new URI("/User/" + gid);
+			    	location = new URI("/Group/" + gid);
 			    }
 				
+			    logger.debug("location = " + location);
+			    
 				// user stored successfully, return the group				
 				return Response.ok(group).location(location).build();
 			}
@@ -116,11 +127,12 @@ public class LdapGroupResource extends GroupResource
 			{
 				// problem generating entity location
 				logger.error("problem generating entity location");
+				logger.debug(usException);
 				
 				// return a server error
 				return ResourceUtilities.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.NOT_IMPLEMENTED.getMessage() + ": Service Provider problem generating entity location");
 			}
-			catch(Exception nException)
+			catch(Throwable nException)
 			{
 				logger.debug("Resource " + dn + " not found");
 				logger.debug(nException);
@@ -133,6 +145,8 @@ public class LdapGroupResource extends GroupResource
 		{
 			// ldap not configured
 			logger.error("ldap not configured");
+			
+			logger.debug("ldap not configured");
 			
 			// return a server error
 			return ResourceUtilities.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.NOT_IMPLEMENTED.getMessage() + ": Service Provider group ldap repository not configured");

@@ -1,0 +1,50 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>openscim</groupId>
+  <artifactId>openscim-restful-server-core</artifactId>
+  <version>1.0.1</version>
+  <packaging>jar</packaging>
+
+  <name>OpenSCIM :: RESTful Server :: Core</name>
+  <url>http://code.google.com/p/openscim/</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.1</version>
+      <scope>test</scope>
+    </dependency>
+    		<dependency>
+			<groupId>org.apache.wink</groupId>
+			<artifactId>wink-common</artifactId>
+			<version>1.1.3-incubating</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.wink</groupId>
+			<artifactId>wink-client</artifactId>
+			<version>1.1.3-incubating</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.wink</groupId>
+			<artifactId>wink-json-provider</artifactId>
+			<version>1.1.3-incubating</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.wink</groupId>
+			<artifactId>wink-spring-support</artifactId>
+			<version>1.1.3-incubating</version>
+		</dependency>
+		<dependency>
+			<groupId>openscim</groupId>
+			<artifactId>openscim-core</artifactId>
+			<version>1.0.1</version>
+		</dependency>
+  </dependencies>
+</project>
